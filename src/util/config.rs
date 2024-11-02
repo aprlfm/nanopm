@@ -1,6 +1,7 @@
 use config::{Config as ConfigLoader, File, FileFormat};
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use serde_with::serde_as;
+use std::{collections::HashMap, fmt};
 use toml;
 use crate::{init, InitParams, ProjectSetup};
 
@@ -9,6 +10,48 @@ use super::init::new_project_setup;
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub setup: init::ProjectSetup,
+    pub file_structure: FileStructure,
+}
+
+#[serde_as]
+#[derive(Debug, Deserialize, Serialize)]
+pub struct FileStructure {
+    #[serde_as(as = "Vec<(_, _)>")]
+    pub structure_hash: HashMap<usize,Folder>,
+}
+
+impl FileStructure {
+    fn get_default_structure() -> Self {
+        let mut hash = HashMap::new();
+        hash.insert(1, Folder{parent : 0, name : String::from("%name")});
+        hash.insert(2, Folder{parent : 1, name : String::from("01_Documentation")});
+        hash.insert(3, Folder{parent : 1, name : String::from("02_Rushes")});
+        hash.insert(4, Folder{parent : 1, name : String::from("03_External")});
+        hash.insert(5, Folder{parent : 1, name : String::from("04_Pre-Renders")});
+        hash.insert(6, Folder{parent : 1, name : String::from("05_Finals")});
+        hash.insert(7, Folder{parent : 2, name : String::from("01_Pre-Pro")});
+        hash.insert(8, Folder{parent : 2, name : String::from("02_Production")});
+        hash.insert(9, Folder{parent : 3, name : String::from("%days")});
+        hash.insert(10, Folder{parent : 9, name : String::from("01_Video")});
+        hash.insert(11, Folder{parent : 9, name : String::from("02_Audio")});
+        hash.insert(12, Folder{parent : 9, name : String::from("03_VO")});
+        hash.insert(13, Folder{parent : 10, name : String::from("%cams")});
+        hash.insert(14, Folder{parent : 11, name : String::from("%soundsources")});
+        hash.insert(15, Folder{parent : 4, name : String::from("01_Graphics")});
+        hash.insert(16, Folder{parent : 4, name : String::from("02_Images")});
+        hash.insert(17, Folder{parent : 4, name : String::from("03_Music")});
+        hash.insert(18, Folder{parent : 4, name : String::from("04_SFX")});
+        hash.insert(19, Folder{parent : 4, name : String::from("05_Comps")});
+        FileStructure{
+            structure_hash : hash,
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
+pub struct Folder {
+    pub parent : usize,
+    pub name : String,
 }
 
 impl Config {
@@ -31,6 +74,7 @@ impl Config {
 pub fn new_config() -> Config {
     Config {
         setup: init::new_project_setup(),
+        file_structure: FileStructure::get_default_structure(),
     }
 }
 
@@ -89,7 +133,10 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
     if next_operation != InitParams::None {
         panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type(next_operation, true));
     }
-    Config{setup : project}
+    Config{
+        setup : project,
+        file_structure : FileStructure::get_default_structure()
+    }
 }
 
 #[derive(Debug)]

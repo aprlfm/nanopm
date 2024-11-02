@@ -38,21 +38,11 @@ fn main() {
     };
 
     dbg!(&config);
-    setup(&old_config, &config, &operation_type);
-
-    let config_result = Config::write_config(&config, "config.toml");
-    match config_result {
-        Ok(file) => file,
-        Err(error) => {
-            eprintln!("Problem opening the file: {}", error);
-            std::process::exit(1);
-        },
-    };
-    
+    setup(old_config, config, operation_type);
 }
 
-fn setup(old_config_option: &Option<Config>, config: &Config, op_type: &OperationType){
-    let mut old_config = &new_config();
+fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationType){
+    let mut old_config = new_config();
     let mut old_config_exists = false;
     match old_config_option {
         Some(config) => {old_config = config; old_config_exists = true},
@@ -69,7 +59,16 @@ fn setup(old_config_option: &Option<Config>, config: &Config, op_type: &Operatio
         };
 
         match main_folder_result {
-            Ok(()) => (),
+            Ok(()) => {
+                let write_config_result = Config::write_config(&config, "config.toml");
+                match write_config_result {
+                    Ok(file) => file,
+                    Err(error) => {
+                        eprintln!("Problem opening the file: {}", error);
+                        std::process::exit(1);
+                    },
+                };
+            },
             Err(error) => {
                 eprintln!("Problem creating/editing files: {}", error);
                 std::process::exit(3);
