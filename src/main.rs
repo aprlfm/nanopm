@@ -6,7 +6,7 @@ fn main() {
     
     let mut args_to_process = args.len() - 1;
     let mut arg_index : usize = 0;
-    let mut next_operation : u8 = InitParams::NONE;
+    let mut next_operation = InitParams::None;
 
     let mut project = ProjectSetup{
         name : String::from("Untitled"),
@@ -21,29 +21,29 @@ fn main() {
         arg_index += 1;
         let current_arg = &args[arg_index][..];
         
-        if next_operation == InitParams::NONE {
+        if next_operation == InitParams::None {
             match current_arg {
-                "-n" => next_operation = InitParams::PROJ_NAME,
-                "--name" => next_operation = InitParams::PROJ_NAME,
-                "-d" => next_operation = InitParams::DAY_COUNT,
-                "--days" => next_operation = InitParams::DAY_COUNT,
-                "-c" => next_operation = InitParams::CAMERA_COUNT,
-                "--cameras" => next_operation = InitParams::CAMERA_COUNT,
-                "-ss" => next_operation = InitParams::SOUND_SOURCES,
-                "--sound-sources" => next_operation = InitParams::SOUND_SOURCES,
+                "-n" => next_operation = InitParams::ProjName,
+                "--name" => next_operation = InitParams::ProjName,
+                "-d" => next_operation = InitParams::Days,
+                "--days" => next_operation = InitParams::Days,
+                "-c" => next_operation = InitParams::Cameras,
+                "--cameras" => next_operation = InitParams::Cameras,
+                "-ss" => next_operation = InitParams::SoundSources,
+                "--sound-sources" => next_operation = InitParams::SoundSources,
                 _ => 
                     //panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
-                    next_operation = InitParams::NONE,
+                    next_operation = InitParams::None,
             }
         } else {
             match next_operation {
-                InitParams::PROJ_NAME => project.name = String::from(current_arg),
-                InitParams::DAY_COUNT => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type_readable(next_operation))[..]),
-                InitParams::CAMERA_COUNT => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type_readable(next_operation))[..]),
-                InitParams::SOUND_SOURCES => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type_readable(next_operation))[..]),
-                other => panic!("\"next_operation\" somehow obtained invalid value of \"{other}\" (ERROR CODE: 1)"),
+                InitParams::ProjName => project.name = String::from(current_arg),
+                InitParams::Days => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type(next_operation, true))[..]),
+                InitParams::Cameras => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type(next_operation, true))[..]),
+                InitParams::SoundSources => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type(next_operation, true))[..]),
+                other => panic!("\"next_operation\" somehow obtained invalid value of \"{}\" (ERROR CODE: 1)", other.to_string()),
             }
-            next_operation = InitParams::NONE
+            next_operation = InitParams::None
         }
 
         args_to_process -= 1;
@@ -51,41 +51,52 @@ fn main() {
         println!("{args_to_process} args left to process!");
     }
 
-    if next_operation != InitParams::NONE {
-        panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], get_required_type_readable(next_operation));
+    if next_operation != InitParams::None {
+        panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], get_required_type(next_operation, true));
     }
 
     dbg!(&project);
 }
 
-fn get_required_type(operation : u8) -> String {
-    match operation {
-        InitParams::PROJ_NAME => String::from("String"),
-        InitParams::DAY_COUNT => String::from("usize"),
-        InitParams::CAMERA_COUNT => String::from("usize"),
-        InitParams::SOUND_SOURCES => String::from("usize"),
-        _ => String::from("invalid")
+fn get_required_type(operation : InitParams, readable : bool) -> String {
+    if readable {
+        match operation {
+            InitParams::ProjName => String::from("a String"),
+            InitParams::Days => String::from("an integer"),
+            InitParams::Cameras => String::from("an integer"),
+            InitParams::SoundSources => String::from("an integer"),
+            _ => String::from("No type found for this parameter (ERROR CODE: 2)")
+        }
+    } else {
+        match operation {
+            InitParams::ProjName => String::from("String"),
+            InitParams::Days => String::from("usize"),
+            InitParams::Cameras => String::from("usize"),
+            InitParams::SoundSources => String::from("usize"),
+            _ => String::from("invalid")
+        }
     }
 }
 
-fn get_required_type_readable(operation : u8) -> String {
-    match operation {
-        InitParams::PROJ_NAME => String::from("a String"),
-        InitParams::DAY_COUNT => String::from("an integer"),
-        InitParams::CAMERA_COUNT => String::from("an integer"),
-        InitParams::SOUND_SOURCES => String::from("an integer"),
-        _ => String::from("No type found for this parameter (ERROR CODE: 2)")
-    }
+#[derive(Eq, PartialEq)]
+enum InitParams {
+    None,
+    ProjName,
+    Days,
+    Cameras,
+    SoundSources,
 }
-
-struct InitParams ();
 
 impl InitParams {
-    const NONE : u8 = 0;
-    const PROJ_NAME : u8 = 1;
-    const DAY_COUNT : u8 = 2;
-    const CAMERA_COUNT : u8 = 3;
-    const SOUND_SOURCES : u8 = 4;
+    fn to_string(&self) -> String {
+        match &self {
+            InitParams::ProjName => String::from("ProjName"),
+            InitParams::Days => String::from("Days"),
+            InitParams::Cameras => String::from("Cameras"),
+            InitParams::SoundSources => String::from("SoundSources"),
+            _ => panic!("UNDEFINED InitParams VARIANT MUST BE ADDED (please report this) (ERROR CODE: 3)")
+        }
+    }
 }
 
 #[derive(Debug)]
