@@ -2,7 +2,7 @@ mod util;
 
 pub use config::Config;
 use std::env;
-use util::{init::InitParams};
+use util::{init::InitParams, init::ProjectSetup, init};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -39,9 +39,9 @@ fn main() {
         } else {
             match next_operation {
                 InitParams::ProjName => project.name = String::from(current_arg),
-                InitParams::Days => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type(next_operation, true))[..]),
-                InitParams::Cameras => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type(next_operation, true))[..]),
-                InitParams::SoundSources => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type(next_operation, true))[..]),
+                InitParams::Days => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type(next_operation, true))[..]),
+                InitParams::Cameras => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type(next_operation, true))[..]),
+                InitParams::SoundSources => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type(next_operation, true))[..]),
                 other => panic!("No defined instruction for processing \"{}\" (ERROR CODE: 1)", other.to_string()),
             }
             next_operation = InitParams::None
@@ -53,36 +53,10 @@ fn main() {
     }
 
     if next_operation != InitParams::None {
-        panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], get_required_type(next_operation, true));
+        panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type(next_operation, true));
     }
 
     dbg!(&project);
 }
 
-fn get_required_type(operation : InitParams, readable : bool) -> String {
-    if readable {
-        match operation {
-            InitParams::ProjName => String::from("a String"),
-            InitParams::Days => String::from("an integer"),
-            InitParams::Cameras => String::from("an integer"),
-            InitParams::SoundSources => String::from("an integer"),
-            _ => String::from("No type found for this parameter (ERROR CODE: 2)")
-        }
-    } else {
-        match operation {
-            InitParams::ProjName => String::from("String"),
-            InitParams::Days => String::from("usize"),
-            InitParams::Cameras => String::from("usize"),
-            InitParams::SoundSources => String::from("usize"),
-            _ => String::from("invalid")
-        }
-    }
-}
 
-#[derive(Debug)]
-struct ProjectSetup {
-    name : String,
-    days : usize,
-    cameras : usize,
-    sound_sources: usize,
-}
