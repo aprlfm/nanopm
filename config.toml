@@ -1,7 +1,7 @@
 version = "v1"
 
 [setup]
-name = "Untitled"
+name = "poe"
 days = 1
 cameras = 1
 sound_sources = 1
@@ -9,4 +9,4 @@ sound_sources = 1
 # IGNORE BELOW
 
 [file_structure]
-structure_hash = [[5, { parent = 1, name = "04_Pre-Renders" }], [9, { parent = 3, name = "%days" }], [4, { parent = 1, name = "03_External" }], [11, { parent = 9, name = "02_Audio" }], [13, { parent = 10, name = "%cams" }], [3, { parent = 1, name = "02_Rushes" }], [16, { parent = 4, name = "02_Images" }], [14, { parent = 11, name = "%soundsources" }], [12, { parent = 9, name = "03_VO" }], [17, { parent = 4, name = "03_Music" }], [18, { parent = 4, name = "04_SFX" }], [10, { parent = 9, name = "01_Video" }], [2, { parent = 1, name = "01_Documentation" }], [19, { parent = 4, name = "05_Comps" }], [7, { parent = 2, name = "01_Pre-Pro" }], [1, { parent = 0, name = "%name" }], [6, { parent = 1, name = "05_Finals" }], [8, { parent = 2, name = "02_Production" }], [15, { parent = 4, name = "01_Graphics" }]]
+structure_hash = [[11, { parent = 9, name = "02_Audio" }], [1, { parent = 0, name = "%name" }], [15, { parent = 4, name = "01_Graphics" }], [18, { parent = 4, name = "04_SFX" }], [2, { parent = 1, name = "01_Documentation" }], [6, { parent = 1, name = "05_Finals" }], [16, { parent = 4, name = "02_Images" }], [7, { parent = 2, name = "01_Pre-Pro" }], [12, { parent = 9, name = "03_VO" }], [3, { parent = 1, name = "02_Rushes" }], [17, { parent = 4, name = "03_Music" }], [4, { parent = 1, name = "03_External" }], [14, { parent = 11, name = "%soundsources" }], [10, { parent = 9, name = "01_Video" }], [19, { parent = 4, name = "05_Comps" }], [8, { parent = 2, name = "02_Production" }], [5, { parent = 1, name = "04_Pre-Renders" }], [9, { parent = 3, name = "%days" }], [13, { parent = 10, name = "%cams" }]]

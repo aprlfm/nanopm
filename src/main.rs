@@ -11,7 +11,7 @@ fn main() {
         let config = match config_result {
             Ok(config) => config,
             Err(error) => {
-                eprintln!("Problem opening the file: {}", error);
+                eprintln!("Line {}: Problem opening the file: {}", line!(), error);
                 std::process::exit(2);
             }
         };
@@ -59,17 +59,20 @@ fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationTy
 
         match main_folder_result {
             Ok(()) => {
-                let write_config_result = Config::write_config(&config, "config.toml");
+                old_config.setup.name = setup.name.clone();
+                // Regardless of whether old config exists or not (if it didn't it would get default values), edit the name attribute and then write the config to file.
+                // UPDATE NAME VALUE IN CONFIG
+                let write_config_result = Config::write_config(&old_config, "config.toml");
                 match write_config_result {
                     Ok(file) => file,
                     Err(error) => {
-                        eprintln!("Problem opening the file: {}", error);
+                        eprintln!("Line {}: Problem opening the file: {}", line!(), error);
                         std::process::exit(1);
                     },
                 };
             },
             Err(error) => {
-                eprintln!("Problem creating/editing files: {}", error);
+                eprintln!("Line {}: Problem creating/editing files: {}", line!(), error);
                 std::process::exit(3);
             },
         };

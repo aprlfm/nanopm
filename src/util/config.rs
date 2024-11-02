@@ -104,7 +104,7 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
         project = match project_result {
             Ok(config) => config.setup,
             Err(error) => {
-                eprintln!("Problem opening the file: {}", error);
+                eprintln!("Line {}: Problem opening the file: {}", line!(),error);
                 std::process::exit(2);
             },
         };
