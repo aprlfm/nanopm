@@ -1,5 +1,5 @@
 pub use config::Config;
-use std::{env, fmt};
+use std::env;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -31,9 +31,7 @@ fn main() {
                 "--cameras" => next_operation = InitParams::Cameras,
                 "-ss" => next_operation = InitParams::SoundSources,
                 "--sound-sources" => next_operation = InitParams::SoundSources,
-                _ => 
-                    //panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
-                    next_operation = InitParams::None,
+                other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
             }
         } else {
             match next_operation {
