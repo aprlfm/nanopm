@@ -1,5 +1,5 @@
 pub use config::Config;
-use std::{env, u8};
+use std::{env, fmt};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -41,7 +41,7 @@ fn main() {
                 InitParams::Days => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type(next_operation, true))[..]),
                 InitParams::Cameras => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type(next_operation, true))[..]),
                 InitParams::SoundSources => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], get_required_type(next_operation, true))[..]),
-                other => panic!("\"next_operation\" somehow obtained invalid value of \"{}\" (ERROR CODE: 1)", other.to_string()),
+                other => panic!("No defined instruction for processing \"{}\" (ERROR CODE: 1)", other.to_string()),
             }
             next_operation = InitParams::None
         }
@@ -78,7 +78,7 @@ fn get_required_type(operation : InitParams, readable : bool) -> String {
     }
 }
 
-#[derive(Eq, PartialEq)]
+#[derive(Eq, PartialEq, Debug)]
 enum InitParams {
     None,
     ProjName,
@@ -94,7 +94,7 @@ impl InitParams {
             InitParams::Days => String::from("Days"),
             InitParams::Cameras => String::from("Cameras"),
             InitParams::SoundSources => String::from("SoundSources"),
-            _ => panic!("UNDEFINED InitParams VARIANT MUST BE ADDED (please report this) (ERROR CODE: 3)")
+            other => panic!("Undefined InitParams variant \"{other:?}\" must be added to to_string() method (please report this) (ERROR CODE: 3)")
         }
     }
 }
