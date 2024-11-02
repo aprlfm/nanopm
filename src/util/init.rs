@@ -9,6 +9,14 @@ pub enum InitParams {
     SoundSources,
 }
 
+#[derive(Eq, PartialEq, Debug)]
+pub enum OperationType {
+    Init,
+    New,
+    Update,
+    None,
+}
+
 impl InitParams {
     pub fn to_string(&self) -> String {
         match &self {
