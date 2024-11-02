@@ -1,16 +1,20 @@
 use config::{Config as ConfigLoader, File, FileFormat};
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
+use std::usize;
 use std::{collections::HashMap, fmt};
 use toml;
 use crate::{init, InitParams, ProjectSetup};
+use crate::util::util::get_version;
+use itertools::Itertools;
 
 use super::init::new_project_setup;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
-    pub setup: init::ProjectSetup,
-    pub file_structure: FileStructure,
+    pub version : String,
+    pub setup : init::ProjectSetup,
+    pub file_structure : FileStructure,
 }
 
 #[serde_as]
@@ -42,6 +46,8 @@ impl FileStructure {
         hash.insert(17, Folder{parent : 4, name : String::from("03_Music")});
         hash.insert(18, Folder{parent : 4, name : String::from("04_SFX")});
         hash.insert(19, Folder{parent : 4, name : String::from("05_Comps")});
+        for (_k, _v) in hash.iter().sorted_by_key(|x| x.0) {
+        }
         FileStructure{
             structure_hash : hash,
         }
@@ -56,8 +62,16 @@ pub struct Folder {
 
 impl Config {
     pub fn write_config(config: &Config, file_path: &str) -> Result<(), ConfigError> {
-        let text = toml::to_string(&config)
+
+        let mut text = toml::to_string(&config)
             .map_err(|e| ConfigError::ParseError(format!("Failed to serialize config: {}", e)))?;
+        match &text.find("[file_structure]") {
+            Some(index) => {
+                let finalindex = index.clone();
+                text = format!("{}{}{}", &text[..finalindex], "# IGNORE BELOW\n\n", &text[finalindex..]);
+            }
+            None => {}
+        }
         
         std::fs::write(file_path, text)
             .map_err(|e| ConfigError::IoError(e))?;
@@ -73,8 +87,9 @@ impl Config {
 
 pub fn new_config() -> Config {
     Config {
-        setup: init::new_project_setup(),
-        file_structure: FileStructure::get_default_structure(),
+        version : String::from("v1"),
+        setup : init::new_project_setup(),
+        file_structure : FileStructure::get_default_structure(),
     }
 }
 
@@ -134,6 +149,7 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
         panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type(next_operation, true));
     }
     Config{
+        version : get_version(),
         setup : project,
         file_structure : FileStructure::get_default_structure()
     }

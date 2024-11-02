@@ -14,7 +14,6 @@ pub enum InitParams {
 pub enum OperationType {
     New,
     Update,
-    None,
 }
 
 impl InitParams {

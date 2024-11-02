@@ -1,7 +1,6 @@
 mod util;
 
-use std::{env, fmt::Result, fs, path::Path};
-use serde::de::value::Error;
+use std::{env, fs, path::Path, process};
 use util::{config::{self, new_config, Config, ConfigError}, init::{self, InitParams, OperationType, ProjectSetup}};
 
 fn main() {
@@ -20,7 +19,7 @@ fn main() {
     } else {
         None
     };
-    let mut operation_type = OperationType::None;
+    let operation_type;
 
     config = match &args[1][..] {
         "new" => {
@@ -33,7 +32,7 @@ fn main() {
         },
         _ => {
             println!("TODO: Help DOCUMENTATION");
-            new_config()
+            process::exit(0);
         },
     };
 
@@ -83,7 +82,9 @@ fn initialize_main_folder(old_setup : &ProjectSetup, setup : &ProjectSetup, op_t
     if old_config_exists && op_type == &OperationType::Update && Path::new(&old_setup.name).exists() && &old_setup.name != &setup.name {
         fs::rename(&old_setup.name, &setup.name).map_err(|e| ConfigError::IoError(e))?;
     } else {
-        fs::create_dir(&setup.name).map_err(|e| ConfigError::IoError(e))?;
+        if !Path::new(&setup.name).exists(){
+            fs::create_dir(&setup.name).map_err(|e| ConfigError::IoError(e))?;
+        }
     }
     Ok(())
 }
@@ -93,7 +94,9 @@ fn initialize_main_folder_deadname(deadname: &String, setup: &ProjectSetup) -> s
     if Path::new(&deadname).exists() {
         fs::rename(&deadname, &setup.name).map_err(|e| ConfigError::IoError(e))?;
     } else {
-        fs::create_dir(&setup.name).map_err(|e| ConfigError::IoError(e))?;
+        if !Path::new(&setup.name).exists(){
+            fs::create_dir(&setup.name).map_err(|e| ConfigError::IoError(e))?;
+        }
     }
     Ok(())
 }
