@@ -29,6 +29,15 @@ pub struct ProjectSetup {
     pub sound_sources: usize,
 }
 
+pub fn new_project_setup() -> ProjectSetup{
+    ProjectSetup{
+        name : String::from("Untitled"),
+        days : 1,
+        cameras : 1,
+        sound_sources : 1,
+    }
+}
+
 pub fn get_required_type(operation : InitParams, readable : bool) -> String {
     if readable {
         match operation {

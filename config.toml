@@ -1,0 +1,5 @@
+[setup]
+name = "ansoda"
+days = 1
+cameras = 5
+sound_sources = 1
