@@ -1,8 +1,7 @@
 mod util;
 
-pub use config::Config;
 use std::env;
-use util::{init::InitParams, init::ProjectSetup, init};
+use util::{config::Config, init::{self, InitParams, ProjectSetup}};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -55,8 +54,9 @@ fn main() {
     if next_operation != InitParams::None {
         panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type(next_operation, true));
     }
-
-    dbg!(&project);
+    let config = Config{setup : project};
+    Config::write_config(&config, "test.toml");
+    dbg!(&config);
 }
 
 

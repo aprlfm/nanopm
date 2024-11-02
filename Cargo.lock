@@ -376,7 +376,9 @@ dependencies = [
  "config",
  "env",
  "fmt",
+ "serde",
  "substring",
+ "toml",
 ]
 
 [[package]]

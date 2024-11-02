@@ -1,3 +1,5 @@
+use serde::{Deserialize, Serialize};
+
 #[derive(Eq, PartialEq, Debug)]
 pub enum InitParams {
     None,
@@ -19,7 +21,7 @@ impl InitParams {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct ProjectSetup {
     pub name : String,
     pub days : usize,
