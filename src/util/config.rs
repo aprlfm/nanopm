@@ -4,22 +4,24 @@ use std::fmt;
 use toml;
 use crate::{init, InitParams, ProjectSetup};
 
+use super::init::new_project_setup;
+
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     pub setup: init::ProjectSetup,
 }
 
 impl Config {
-    pub fn write_config(config: Config, file_path: &str) -> Result<Config, ConfigError> {
+    pub fn write_config(config: &Config, file_path: &str) -> Result<(), ConfigError> {
         let text = toml::to_string(&config)
             .map_err(|e| ConfigError::ParseError(format!("Failed to serialize config: {}", e)))?;
         
         std::fs::write(file_path, text)
             .map_err(|e| ConfigError::IoError(e))?;
             
-        Ok(config)
+        Ok(())
     }
-
+    
     pub fn read_config(file_path: &str) -> Result<Self, config::ConfigError> {
         let config_loader = ConfigLoader::builder().add_source(File::new(file_path, FileFormat::Toml)).build()?;
         config_loader.try_deserialize()
@@ -48,12 +50,7 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
             },
         };
     } else {
-        project = ProjectSetup{
-            name : String::from("Untitled"),
-            days : 1,
-            cameras : 1,
-            sound_sources : 1,
-        };
+        project = new_project_setup()
     }
 
     while args_to_process > 0 {
@@ -65,6 +62,8 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
             match current_arg {
                 "-n" => next_operation = InitParams::ProjName,
                 "--name" => next_operation = InitParams::ProjName,
+                "-dn" => next_operation = InitParams::DeadName,
+                "--deadname" => next_operation = InitParams::DeadName,
                 "-d" => next_operation = InitParams::Days,
                 "--days" => next_operation = InitParams::Days,
                 "-c" => next_operation = InitParams::Cameras,
@@ -76,6 +75,7 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
         } else {
             match next_operation {
                 InitParams::ProjName => project.name = String::from(current_arg),
+                InitParams::DeadName => project.deadname = Some(String::from(current_arg)),
                 InitParams::Days => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type(next_operation, true))[..]),
                 InitParams::Cameras => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type(next_operation, true))[..]),
                 InitParams::SoundSources => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type(next_operation, true))[..]),

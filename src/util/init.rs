@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub enum InitParams {
     None,
     ProjName,
+    DeadName,
     Days,
     Cameras,
     SoundSources,
@@ -20,6 +21,7 @@ impl InitParams {
     pub fn to_string(&self) -> String {
         match &self {
             InitParams::ProjName => String::from("ProjName"),
+            InitParams::DeadName => String::from("DeadName"),
             InitParams::Days => String::from("Days"),
             InitParams::Cameras => String::from("Cameras"),
             InitParams::SoundSources => String::from("SoundSources"),
@@ -31,6 +33,8 @@ impl InitParams {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct ProjectSetup {
     pub name : String,
+    #[serde(skip_serializing)]
+    pub deadname : Option<String>,
     pub days : usize,
     pub cameras : usize,
     pub sound_sources: usize,
@@ -39,6 +43,7 @@ pub struct ProjectSetup {
 pub fn new_project_setup() -> ProjectSetup{
     ProjectSetup{
         name : String::from("Untitled"),
+        deadname: Some(String::from("NO_DEAD_NAME")),
         days : 1,
         cameras : 1,
         sound_sources : 1,
@@ -49,6 +54,7 @@ pub fn get_required_type(operation : InitParams, readable : bool) -> String {
     if readable {
         match operation {
             InitParams::ProjName => String::from("a String"),
+            InitParams::DeadName => String::from("a String"),
             InitParams::Days => String::from("an integer"),
             InitParams::Cameras => String::from("an integer"),
             InitParams::SoundSources => String::from("an integer"),
@@ -57,6 +63,7 @@ pub fn get_required_type(operation : InitParams, readable : bool) -> String {
     } else {
         match operation {
             InitParams::ProjName => String::from("String"),
+            InitParams::DeadName => String::from("String"),
             InitParams::Days => String::from("usize"),
             InitParams::Cameras => String::from("usize"),
             InitParams::SoundSources => String::from("usize"),
