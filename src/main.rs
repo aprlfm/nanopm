@@ -1,5 +1,8 @@
+mod util;
+
 pub use config::Config;
 use std::env;
+use util::{init::InitParams};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -72,27 +75,6 @@ fn get_required_type(operation : InitParams, readable : bool) -> String {
             InitParams::Cameras => String::from("usize"),
             InitParams::SoundSources => String::from("usize"),
             _ => String::from("invalid")
-        }
-    }
-}
-
-#[derive(Eq, PartialEq, Debug)]
-enum InitParams {
-    None,
-    ProjName,
-    Days,
-    Cameras,
-    SoundSources,
-}
-
-impl InitParams {
-    fn to_string(&self) -> String {
-        match &self {
-            InitParams::ProjName => String::from("ProjName"),
-            InitParams::Days => String::from("Days"),
-            InitParams::Cameras => String::from("Cameras"),
-            InitParams::SoundSources => String::from("SoundSources"),
-            other => panic!("Undefined InitParams variant \"{other:?}\" must be added to to_string() method (please report this) (ERROR CODE: 3)")
         }
     }
 }
