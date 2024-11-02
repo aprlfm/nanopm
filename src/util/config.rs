@@ -1,6 +1,6 @@
 use config::{Config as ConfigLoader, File, FileFormat};
 use serde::{Deserialize, Serialize};
-//use std::fs;
+use std::fmt;
 use toml;
 use crate::{init, InitParams, ProjectSetup};
 
@@ -10,10 +10,14 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn write_config(config: Config, file_path: &str) -> Config {
-        let text = toml::to_string(&config).expect("Could not convert Config to TOML text!");
-        std::fs::write(file_path, text).expect("Failed to write to file!");
-        config
+    pub fn write_config(config: Config, file_path: &str) -> Result<Config, ConfigError> {
+        let text = toml::to_string(&config)
+            .map_err(|e| ConfigError::ParseError(format!("Failed to serialize config: {}", e)))?;
+        
+        std::fs::write(file_path, text)
+            .map_err(|e| ConfigError::IoError(e))?;
+            
+        Ok(config)
     }
 
     pub fn read_config(file_path: &str) -> Result<Self, config::ConfigError> {
@@ -35,7 +39,14 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
 
     let mut project: ProjectSetup;
     if load {
-        project = Config::read_config("config.toml").expect("Could not read config!").setup;
+        let project_result = Config::read_config("config.toml");
+        project = match project_result {
+            Ok(config) => config.setup,
+            Err(error) => {
+                eprintln!("Problem opening the file: {}", error);
+                std::process::exit(2);
+            },
+        };
     } else {
         project = ProjectSetup{
             name : String::from("Untitled"),
@@ -79,4 +90,23 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
         panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type(next_operation, true));
     }
     Config{setup : project}
+}
+
+#[derive(Debug)]
+pub enum ConfigError {
+    IoError(std::io::Error),
+    ParseError(String),
+    // InvalidArgument(String),
+    // MissingParameter(String),
+}
+
+impl fmt::Display for ConfigError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            ConfigError::IoError(e) => write!(f, "IO error! {}", e),
+            ConfigError::ParseError(msg) => write!(f, "parsing error! {}", msg),
+            // ConfigError::InvalidArgument(arg) => write!(f, "invalid argument! {}", arg),
+            // ConfigError::MissingParameter(param) => write!(f, "missing parameter! {}", param),
+        }
+    }
 }

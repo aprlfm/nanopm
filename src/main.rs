@@ -9,13 +9,34 @@ fn main() {
     let config : Config;
     match &args[1][..] {
         "init" => {
-            config = Config::write_config(config::new_config(), "config.toml")
+            let config_result = Config::write_config(config::new_config(), "config.toml");
+            config = match config_result {
+                Ok(file) => file,
+                Err(error) => {
+                    eprintln!("Problem opening the file: {}", error);
+                    std::process::exit(1);
+                },
+            };
         },
         "new" => {
-            config = Config::write_config(config::parse_to_config(args, false), "config.toml")
+            let config_result = Config::write_config(config::parse_to_config(args, false), "config.toml");
+            config = match config_result {
+                Ok(file) => file,
+                Err(error) => {
+                    eprintln!("Problem opening the file: {}", error);
+                    std::process::exit(1);
+                },
+            };
         },
         "update" => {
-            config = Config::write_config(config::parse_to_config(args, true), "config.toml")
+            let config_result = Config::write_config(config::parse_to_config(args, true), "config.toml");
+            config = match config_result {
+                Ok(file) => file,
+                Err(error) => {
+                    eprintln!("Problem opening the file: {}", error);
+                    std::process::exit(1);
+                },
+            };
         },
         _ => {
             config = new_config();
