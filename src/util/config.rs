@@ -72,10 +72,7 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
             }
             next_operation = InitParams::None
         }
-
         args_to_process -= 1;
-        
-        println!("{args_to_process} args left to process!");
     }
 
     if next_operation != InitParams::None {

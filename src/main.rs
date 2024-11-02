@@ -6,7 +6,6 @@ use util::{config::{self, new_config, Config}, init::{self, InitParams, ProjectS
 fn main() {
     let args: Vec<String> = env::args().collect();
 
-    //println!("{args_to_process} args left to process!");
     let config : Config;
     match &args[1][..] {
         "init" => {
