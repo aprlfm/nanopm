@@ -11,7 +11,6 @@ pub enum InitParams {
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum OperationType {
-    Init,
     New,
     Update,
     None,

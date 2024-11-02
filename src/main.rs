@@ -22,17 +22,6 @@ fn main() {
     let mut operation_type = OperationType::None;
 
     match &args[1][..] {
-        "init" => {
-            let config_result = Config::write_config(config::new_config(), "config.toml");
-            config = match config_result {
-                Ok(file) => file,
-                Err(error) => {
-                    eprintln!("Problem opening the file: {}", error);
-                    std::process::exit(1);
-                },
-            };
-            operation_type = OperationType::Init;
-        },
         "new" => {
             let config_result = Config::write_config(config::parse_to_config(args, false), "config.toml");
             config = match config_result {
