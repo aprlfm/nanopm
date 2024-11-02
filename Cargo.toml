@@ -1,0 +1,10 @@
+[package]
+name = "project_file_setup"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+config = "0.14.1"
+env = "0.1.0"
+fmt = "0.1.0"
+substring = "1.4.5"
