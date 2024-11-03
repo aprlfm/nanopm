@@ -11,20 +11,39 @@ pub enum InitParams {
 }
 
 #[derive(Eq, PartialEq, Debug)]
+pub enum QueryParams {
+    None,
+    Size,
+    FileCount,
+    //...,
+}
+
+#[derive(Eq, PartialEq, Debug)]
 pub enum OperationType {
     New,
     Update,
+    Query,
 }
 
 impl InitParams {
     pub fn to_string(&self) -> String {
         match &self {
+            InitParams::None => String::from("None"),
             InitParams::ProjName => String::from("ProjName"),
             InitParams::DeadName => String::from("DeadName"),
             InitParams::Days => String::from("Days"),
             InitParams::Cameras => String::from("Cameras"),
             InitParams::SoundSources => String::from("SoundSources"),
-            other => panic!("Undefined InitParams variant \"{other:?}\" must be added to to_string() method (please report this) (ERROR CODE: 3)"),
+        }
+    }
+}
+
+impl QueryParams {
+    pub fn to_string(&self) -> String {
+        match &self {
+            QueryParams::None => String::from("None"),
+            QueryParams::Size => String::from("Size"),
+            QueryParams::FileCount => String::from("FileCount"),
         }
     }
 }
@@ -52,7 +71,7 @@ pub fn new_project_setup() -> ProjectSetup{
     }
 }
 
-pub fn get_required_type(operation : InitParams, readable : bool) -> String {
+pub fn get_required_type_init(operation : InitParams, readable : bool) -> String {
     if readable {
         match operation {
             InitParams::ProjName => String::from("a String"),
@@ -69,6 +88,22 @@ pub fn get_required_type(operation : InitParams, readable : bool) -> String {
             InitParams::Days => String::from("usize"),
             InitParams::Cameras => String::from("usize"),
             InitParams::SoundSources => String::from("usize"),
+            _ => String::from("invalid")
+        }
+    }
+}
+
+pub fn get_required_type_query(operation : QueryParams, readable : bool) -> String {
+    if readable {
+        match operation {
+            QueryParams::Size => String::from("a String"),
+            QueryParams::FileCount => String::from("a String"),
+            _ => String::from("No type found for this parameter (ERROR CODE: 2)")
+        }
+    } else {
+        match operation {
+            QueryParams::Size => String::from("String"),
+            QueryParams::FileCount => String::from("String"),
             _ => String::from("invalid")
         }
     }

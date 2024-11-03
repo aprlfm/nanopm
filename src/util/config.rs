@@ -7,6 +7,8 @@ use crate::{init, InitParams, ProjectSetup};
 use crate::util::util::get_version;
 
 use super::init::new_project_setup;
+use super::init::OperationType;
+use super::init::QueryParams;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
@@ -18,6 +20,16 @@ pub struct Config {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct FileStructure {
     pub folders_list: Vec<Folder>,
+}
+
+pub enum ParsedReturn {
+    Config(Config),
+    Query(Query),
+}
+
+pub enum Query{
+    Size,
+    FileCount,
 }
 
 impl FileStructure {
@@ -89,10 +101,11 @@ pub fn new_config() -> Config {
     }
 }
 
-pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
+pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> ParsedReturn {
     let mut args_to_process = args.len() - 2;
     let mut arg_index : usize = 1;
-    let mut next_operation = InitParams::None;
+    let mut next_init_param = InitParams::None;
+    let mut next_query_param = QueryParams::None;
 
     let mut project: ProjectSetup;
     let structure: FileStructure;
@@ -110,49 +123,85 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
         structure = FileStructure::get_default_structure();
     }
 
-    while args_to_process > 0 {
+    while args_to_process > 0 && op_type != &OperationType::Query {
 
         arg_index += 1;
         let current_arg = &args[arg_index][..];
         
-        if next_operation == InitParams::None {
+        if next_init_param == InitParams::None {
             match current_arg {
-                "-n" => next_operation = InitParams::ProjName,
-                "--name" => next_operation = InitParams::ProjName,
-                "-dn" => next_operation = InitParams::DeadName,
-                "--deadname" => next_operation = InitParams::DeadName,
-                "-d" => next_operation = InitParams::Days,
-                "--days" => next_operation = InitParams::Days,
-                "-c" => next_operation = InitParams::Cameras,
-                "--cameras" => next_operation = InitParams::Cameras,
-                "-s" => next_operation = InitParams::SoundSources,
-                "--sound-sources" => next_operation = InitParams::SoundSources,
+                "-n" => next_init_param = InitParams::ProjName,
+                "--name" => next_init_param = InitParams::ProjName,
+                "-dn" => next_init_param = InitParams::DeadName,
+                "--deadname" => next_init_param = InitParams::DeadName,
+                "-d" => next_init_param = InitParams::Days,
+                "--days" => next_init_param = InitParams::Days,
+                "-c" => next_init_param = InitParams::Cameras,
+                "--cameras" => next_init_param = InitParams::Cameras,
+                "-s" => next_init_param = InitParams::SoundSources,
+                "--sound-sources" => next_init_param = InitParams::SoundSources,
                 "-cl" => project.clean_project = true,
                 "--clean" => project.clean_project = true,
                 other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
             }
         } else {
-            match next_operation {
+            match next_init_param {
                 InitParams::ProjName => project.name = String::from(current_arg),
                 InitParams::DeadName => project.deadname = Some(String::from(current_arg)),
-                InitParams::Days => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type(next_operation, true))[..]),
-                InitParams::Cameras => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type(next_operation, true))[..]),
-                InitParams::SoundSources => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type(next_operation, true))[..]),
+                InitParams::Days => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..]),
+                InitParams::Cameras => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..]),
+                InitParams::SoundSources => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..]),
                 other => panic!("No defined instruction for processing \"{}\" (ERROR CODE: 1)", other.to_string()),
             }
-            next_operation = InitParams::None
+            next_init_param = InitParams::None
         }
         args_to_process -= 1;
     }
 
-    if next_operation != InitParams::None {
-        panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type(next_operation, true));
+    if next_init_param != InitParams::None && op_type != &OperationType::Query {
+        panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type_init(next_init_param, true));
     }
-    Config{
-        version : get_version(),
-        setup : project,
-        file_structure : structure,
+
+    while args_to_process > 0 && op_type != &OperationType::Query {
+        arg_index += 1;
+        let current_arg = &args[arg_index][..];
+
+        if next_query_param == QueryParams::None {
+            match current_arg {
+                "-s" => next_query_param = QueryParams::Size,
+                "--size" => next_query_param = QueryParams::Size,
+                "-f" => next_query_param = QueryParams::FileCount,
+                "--filecount" => next_query_param = QueryParams::FileCount,
+                other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
+            }
+        } else {
+            match next_query_param {
+                QueryParams::Size => {}, //TODO
+                QueryParams::FileCount => {} ,
+                other => panic!("No defined instruction for processing \"{}\" (ERROR CODE: 1)", other.to_string()),
+            }
+            next_query_param = QueryParams::None
+        }
+        args_to_process -= 1;
     }
+
+    if next_init_param != InitParams::None && op_type == &OperationType::Query {
+        panic!("Parameter \"{}\" accepts values of {}!", args[arg_index], init::get_required_type_query(next_query_param, true));
+    }
+
+    if op_type != &OperationType::Query {
+        ParsedReturn::Config(
+            Config{
+                version : get_version(),
+                setup : project,
+                file_structure : structure,
+            }
+        )
+    } else {
+        ParsedReturn::Query(Query::Size) // TODO: change Query::Size to selected query
+    }
+
+    
 }
 
 #[derive(Debug)]

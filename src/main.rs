@@ -31,11 +31,15 @@ fn main() {
     config = match &args[1][..] {
         "new" => {
             operation_type = OperationType::New;
-            config::parse_to_config(args, false)
+            config::parse_to_config(args, false, &operation_type)
         },
         "update" => {
             operation_type = OperationType::Update;
-            config::parse_to_config(args, true)
+            config::parse_to_config(args, true, &operation_type)
+        },
+        "query" => {
+            operation_type = OperationType::Query;
+            config::parse_to_config(args, true, &operation_type)
         },
         _ => {
             println!("TODO: Help DOCUMENTATION");
@@ -44,7 +48,11 @@ fn main() {
     };
 
     // dbg!(&config);
-    setup(old_config, config, operation_type);
+    if operation_type != OperationType::Query{
+        setup(old_config, config, operation_type);
+    } else{
+
+    }
 }
 
 fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationType){
