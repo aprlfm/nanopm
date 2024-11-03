@@ -1,12 +1,10 @@
 use config::{Config as ConfigLoader, File, FileFormat};
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 use std::usize;
-use std::{collections::HashMap, fmt};
+use std::fmt;
 use toml;
 use crate::{init, InitParams, ProjectSetup};
 use crate::util::util::get_version;
-use itertools::Itertools;
 
 use super::init::new_project_setup;
 
@@ -17,45 +15,43 @@ pub struct Config {
     pub file_structure : FileStructure,
 }
 
-#[serde_as]
 #[derive(Debug, Deserialize, Serialize)]
 pub struct FileStructure {
-    #[serde_as(as = "Vec<(_, _)>")]
-    pub structure_hash: HashMap<usize,Folder>,
+    pub folders_list: Vec<Folder>,
 }
 
 impl FileStructure {
     fn get_default_structure() -> Self {
-        let mut hash = HashMap::new();
-        hash.insert(1, Folder{parent : 0, name : String::from("%name")});
-        hash.insert(2, Folder{parent : 1, name : String::from("01_Documentation")});
-        hash.insert(3, Folder{parent : 1, name : String::from("02_Rushes")});
-        hash.insert(4, Folder{parent : 1, name : String::from("03_External")});
-        hash.insert(5, Folder{parent : 1, name : String::from("04_Pre-Renders")});
-        hash.insert(6, Folder{parent : 1, name : String::from("05_Finals")});
-        hash.insert(7, Folder{parent : 2, name : String::from("01_Pre-Pro")});
-        hash.insert(8, Folder{parent : 2, name : String::from("02_Production")});
-        hash.insert(9, Folder{parent : 3, name : String::from("%days")});
-        hash.insert(10, Folder{parent : 9, name : String::from("01_Video")});
-        hash.insert(11, Folder{parent : 9, name : String::from("02_Audio")});
-        hash.insert(12, Folder{parent : 9, name : String::from("03_VO")});
-        hash.insert(13, Folder{parent : 10, name : String::from("%cams")});
-        hash.insert(14, Folder{parent : 11, name : String::from("%soundsources")});
-        hash.insert(15, Folder{parent : 4, name : String::from("01_Graphics")});
-        hash.insert(16, Folder{parent : 4, name : String::from("02_Images")});
-        hash.insert(17, Folder{parent : 4, name : String::from("03_Music")});
-        hash.insert(18, Folder{parent : 4, name : String::from("04_SFX")});
-        hash.insert(19, Folder{parent : 4, name : String::from("05_Comps")});
-        for (_k, _v) in hash.iter().sorted_by_key(|x| x.0) {
-        }
+        // vector inserts can NEVER reference a parent which has not been inserted yet.
+        let mut vec: Vec<Folder> = Vec::new();
+        vec.push(Folder{key : 1, parent : 0, name : String::from("%name")});                          // 01
+        vec.push(Folder{key : 2, parent : 1, name : String::from("01_DOCUMENTATION")});               // 02
+        vec.push(Folder{key : 3, parent : 1, name : String::from("02_RUSHES")});                      // 03
+        vec.push(Folder{key : 4, parent : 1, name : String::from("03_EXTERNAL")});                    // 04
+        vec.push(Folder{key : 5, parent : 1, name : String::from("04_PRE-RENDERS")});
+        vec.push(Folder{key : 6, parent : 1, name : String::from("05_FINALS")});
+        vec.push(Folder{key : 7, parent : 2, name : String::from("01_PRE-PRO")});
+        vec.push(Folder{key : 8, parent : 2, name : String::from("02_PRODUCTION")});
+        vec.push(Folder{key : 9, parent : 3, name : String::from("%days")});
+        vec.push(Folder{key : 10, parent : 9, name : String::from("01_VIDEO")});
+        vec.push(Folder{key : 11, parent : 9, name : String::from("02_AUDIO")});
+        vec.push(Folder{key : 12, parent : 9, name : String::from("03_VO")});
+        vec.push(Folder{key : 13, parent : 10, name : String::from("%cams")});
+        vec.push(Folder{key : 14, parent : 11, name : String::from("%soundsources")});
+        vec.push(Folder{key : 15, parent : 4, name : String::from("01_GRAPHICS")});
+        vec.push(Folder{key : 16, parent : 4, name : String::from("02_IMAGES")});
+        vec.push(Folder{key : 17, parent : 4, name : String::from("03_MUSIC")});
+        vec.push(Folder{key : 18, parent : 4, name : String::from("04_SFX")});
+        vec.push(Folder{key : 19, parent : 4, name : String::from("05_COMPS")});
         FileStructure{
-            structure_hash : hash,
+            folders_list: vec,
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash)]
 pub struct Folder {
+    pub key :usize,
     pub parent : usize,
     pub name : String,
 }
@@ -65,10 +61,10 @@ impl Config {
 
         let mut text = toml::to_string(&config)
             .map_err(|e| ConfigError::ParseError(format!("Failed to serialize config: {}", e)))?;
-        match &text.find("[file_structure]") {
+        match &text.find("[[file") {
             Some(index) => {
                 let finalindex = index.clone();
-                text = format!("{}{}{}", &text[..finalindex], "# IGNORE BELOW\n\n", &text[finalindex..]);
+                text = format!("{}{}{}", &text[..finalindex], "# Edit below section at your own risk (the following changes file structure on future \"update\" calls)\n\n", &text[finalindex..]);
             }
             None => {}
         }
@@ -99,17 +95,19 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
     let mut next_operation = InitParams::None;
 
     let mut project: ProjectSetup;
+    let structure: FileStructure;
     if load {
         let project_result = Config::read_config("config.toml");
         project = match project_result {
-            Ok(config) => config.setup,
+            Ok(config) => {structure = config.file_structure; config.setup},
             Err(error) => {
                 eprintln!("Line {}: Problem opening the file: {}", line!(),error);
                 std::process::exit(2);
             },
         };
     } else {
-        project = new_project_setup()
+        project = new_project_setup();
+        structure = FileStructure::get_default_structure();
     }
 
     while args_to_process > 0 {
@@ -127,7 +125,7 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
                 "--days" => next_operation = InitParams::Days,
                 "-c" => next_operation = InitParams::Cameras,
                 "--cameras" => next_operation = InitParams::Cameras,
-                "-ss" => next_operation = InitParams::SoundSources,
+                "-s" => next_operation = InitParams::SoundSources,
                 "--sound-sources" => next_operation = InitParams::SoundSources,
                 other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
             }
@@ -151,7 +149,7 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
     Config{
         version : get_version(),
         setup : project,
-        file_structure : FileStructure::get_default_structure()
+        file_structure : structure,
     }
 }
 

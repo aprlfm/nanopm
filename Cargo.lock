@@ -461,6 +461,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
+name = "media_project_manager"
+version = "0.1.0"
+dependencies = [
+ "config",
+ "env",
+ "fmt",
+ "itertools",
+ "serde",
+ "serde_with",
+ "substring",
+ "toml",
+]
+
+[[package]]
 name = "memchr"
 version = "2.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -577,20 +591,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f139b0662de085916d1fb67d2b4169d1addddda1919e696f3252b740b629986e"
 dependencies = [
  "unicode-ident",
-]
-
-[[package]]
-name = "project_file_setup"
-version = "0.1.0"
-dependencies = [
- "config",
- "env",
- "fmt",
- "itertools",
- "serde",
- "serde_with",
- "substring",
- "toml",
 ]
 
 [[package]]

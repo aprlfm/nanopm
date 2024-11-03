@@ -21,6 +21,11 @@ fn main() {
     };
     let operation_type;
 
+    if &args.len() == &1usize {
+        println!("TODO: Help DOCUMENTATION");
+            process::exit(0);
+    }
+
     config = match &args[1][..] {
         "new" => {
             operation_type = OperationType::New;
@@ -36,7 +41,7 @@ fn main() {
         },
     };
 
-    dbg!(&config);
+    // dbg!(&config);
     setup(old_config, config, operation_type);
 }
 
@@ -78,6 +83,103 @@ fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationTy
         };
     }
     
+    let mut paths: Vec<String> = Vec::new();
+    
+    {
+        paths.push("/".to_string());
+        for v in &config.file_structure.folders_list {
+            let mut paths_to_append: Vec<String> = Vec::new();
+            let next_path = String::from("/");
+            paths_to_append.push(next_path);
+            let mut current_parent_folder = v;
+            let mut iterations = 0;
+            let max_iterations = 100;
+            // MAX ITERATIONS set to 100 (can be changed)
+            while current_parent_folder.parent != 0 && iterations < max_iterations {
+                // println!("{x}", x = current_parent_folder.name);
+                // println!("{x}", x = current_parent_folder.parent);
+                match current_parent_folder.name.as_str() {
+                    "%days" => {
+                        let mut new_paths_vector: Vec<String> = Vec::new();
+                        for i in 1..setup.days + 1 {
+                            let padded_number = format!("{:0>2}", i);
+                            let folder_name = format!("/{}_DAY{}", padded_number, padded_number);
+                            for path in &mut paths_to_append {
+                                let mut new_path = path.clone();
+                                new_path.insert_str(0, &folder_name);
+                                new_paths_vector.push(new_path);
+                            }
+                        }
+                        paths_to_append = new_paths_vector;
+                    },
+                    "%cams" => {
+                        let mut new_paths_vector: Vec<String> = Vec::new();
+                        for i in 1..setup.cameras + 1 {
+                            let padded_number = format!("{:0>2}", i);
+                            let folder_name = format!("/{x}_{y}_CAM", x = padded_number, y = num_to_char(i).expect("Soft limit for cameras is 26!").to_string());
+                            for path in &mut paths_to_append {
+                                let mut new_path = path.clone();
+                                new_path.insert_str(0, &folder_name);
+                                new_paths_vector.push(new_path);
+                            }
+                        }
+                        paths_to_append = new_paths_vector;
+                    },
+                    "%soundsources" => {
+                        let mut new_paths_vector: Vec<String> = Vec::new();
+                        for i in 1..setup.sound_sources + 1 {
+                            let padded_number = format!("{:0>2}", i);
+                            let folder_name = format!("/{x}_{y}_REC", x = padded_number, y = num_to_char(i).expect("Soft limit for sound recorders is 26!").to_string());
+                            for path in &mut paths_to_append {
+                                let mut new_path = path.clone();
+                                new_path.insert_str(0, &folder_name);
+                                new_paths_vector.push(new_path);
+                            }
+                        }
+                        paths_to_append = new_paths_vector;
+                    },
+                    _ => {
+                        for path in &mut paths_to_append {
+                            let current_folder_name = &current_parent_folder.name;
+                            path.insert_str(0, &format!("/{}", current_folder_name));
+                        }
+                    },
+                };
+                current_parent_folder = &config.file_structure.folders_list.get(current_parent_folder.parent - 1).expect("Parent does not exist!");
+                iterations += 1;
+            }
+            if max_iterations == iterations {
+                panic!("Looped past max iterations!");
+            }
+            for path in &mut paths_to_append {
+                path.insert_str(0, &setup.name);
+            }
+            paths.append(&mut paths_to_append);
+        }
+    }
+
+    for path in paths {
+        if !Path::new(&path).exists() {
+            match fs::create_dir(&path).map_err(|e| ConfigError::IoError(e)) {
+                Ok(()) => {},
+                Err(error) => {
+                    eprintln!("Line {}: Problem creating file: {}", line!(), error);
+                    std::process::exit(3);
+                },
+            }
+            ;
+        }
+    }
+
+    let write_config_result = Config::write_config(&config, "config.toml");
+    match write_config_result {
+        Ok(file) => file,
+        Err(error) => {
+            eprintln!("Line {}: Problem opening the file: {}", line!(), error);
+            std::process::exit(1);
+        },
+    };
+    
 }
 
 // initializes the main folder, optionally renaming an older folder given the correct conditions.
@@ -102,4 +204,12 @@ fn initialize_main_folder_deadname(deadname: &String, setup: &ProjectSetup) -> s
         }
     }
     Ok(())
+}
+
+fn num_to_char(num: usize) -> Option<char> {
+    if num >= 1 && num <= 26 {
+        Some((num as u8 + b'A' - 1) as char)
+    } else {
+        None // Return None if the number is out of range
+    }
 }

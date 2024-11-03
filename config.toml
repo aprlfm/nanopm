@@ -1,12 +1,104 @@
 version = "v1"
 
 [setup]
-name = "poe"
-days = 1
-cameras = 1
+name = "Untitled"
+days = 2
+cameras = 3
 sound_sources = 1
 
-# IGNORE BELOW
+# Edit below section at your own risk (the following changes file structure on future "update" calls)
 
-[file_structure]
-structure_hash = [[11, { parent = 9, name = "02_Audio" }], [1, { parent = 0, name = "%name" }], [15, { parent = 4, name = "01_Graphics" }], [18, { parent = 4, name = "04_SFX" }], [2, { parent = 1, name = "01_Documentation" }], [6, { parent = 1, name = "05_Finals" }], [16, { parent = 4, name = "02_Images" }], [7, { parent = 2, name = "01_Pre-Pro" }], [12, { parent = 9, name = "03_VO" }], [3, { parent = 1, name = "02_Rushes" }], [17, { parent = 4, name = "03_Music" }], [4, { parent = 1, name = "03_External" }], [14, { parent = 11, name = "%soundsources" }], [10, { parent = 9, name = "01_Video" }], [19, { parent = 4, name = "05_Comps" }], [8, { parent = 2, name = "02_Production" }], [5, { parent = 1, name = "04_Pre-Renders" }], [9, { parent = 3, name = "%days" }], [13, { parent = 10, name = "%cams" }]]
+[[file_structure.folders_list]]
+key = 1
+parent = 0
+name = "%name"
+
+[[file_structure.folders_list]]
+key = 2
+parent = 1
+name = "01_DOCUMENTATION"
+
+[[file_structure.folders_list]]
+key = 3
+parent = 1
+name = "02_RUSHES"
+
+[[file_structure.folders_list]]
+key = 4
+parent = 1
+name = "03_EXTERNAL"
+
+[[file_structure.folders_list]]
+key = 5
+parent = 1
+name = "04_PRE-RENDERS"
+
+[[file_structure.folders_list]]
+key = 6
+parent = 1
+name = "05_FINALS"
+
+[[file_structure.folders_list]]
+key = 7
+parent = 2
+name = "01_PRE-PRO"
+
+[[file_structure.folders_list]]
+key = 8
+parent = 2
+name = "02_PRODUCTION"
+
+[[file_structure.folders_list]]
+key = 9
+parent = 3
+name = "%days"
+
+[[file_structure.folders_list]]
+key = 10
+parent = 9
+name = "01_VIDEO"
+
+[[file_structure.folders_list]]
+key = 11
+parent = 9
+name = "02_AUDIO"
+
+[[file_structure.folders_list]]
+key = 12
+parent = 9
+name = "03_VO"
+
+[[file_structure.folders_list]]
+key = 13
+parent = 10
+name = "%cams"
+
+[[file_structure.folders_list]]
+key = 14
+parent = 11
+name = "%soundsources"
+
+[[file_structure.folders_list]]
+key = 15
+parent = 4
+name = "01_GRAPHICS"
+
+[[file_structure.folders_list]]
+key = 16
+parent = 4
+name = "02_IMAGES"
+
+[[file_structure.folders_list]]
+key = 17
+parent = 4
+name = "03_MUSIC"
+
+[[file_structure.folders_list]]
+key = 18
+parent = 4
+name = "04_SFX"
+
+[[file_structure.folders_list]]
+key = 19
+parent = 4
+name = "05_COMPS"

@@ -43,8 +43,8 @@ pub fn new_project_setup() -> ProjectSetup{
     ProjectSetup{
         name : String::from("Untitled"),
         deadname: Some(String::from("NO_DEAD_NAME")),
-        days : 1,
-        cameras : 1,
+        days : 2,
+        cameras : 2,
         sound_sources : 1,
     }
 }
