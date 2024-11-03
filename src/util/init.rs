@@ -13,9 +13,9 @@ pub enum InitParams {
 #[derive(Eq, PartialEq, Debug)]
 pub enum QueryParams {
     None,
-    Size,
-    FileCount,
-    //...,
+    Folder,
+    Subfolder,
+    Day,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -26,7 +26,7 @@ pub enum OperationType {
 }
 
 impl InitParams {
-    pub fn to_string(&self) -> String {
+    pub fn _to_string(&self) -> String {
         match &self {
             InitParams::None => String::from("None"),
             InitParams::ProjName => String::from("ProjName"),
@@ -39,11 +39,12 @@ impl InitParams {
 }
 
 impl QueryParams {
-    pub fn to_string(&self) -> String {
+    pub fn _to_string(&self) -> String {
         match &self {
             QueryParams::None => String::from("None"),
-            QueryParams::Size => String::from("Size"),
-            QueryParams::FileCount => String::from("FileCount"),
+            QueryParams::Folder => String::from("Folder"),
+            QueryParams::Subfolder => String::from("Subfolder"),
+            QueryParams::Day => String::from("Day"),
         }
     }
 }
@@ -96,14 +97,16 @@ pub fn get_required_type_init(operation : InitParams, readable : bool) -> String
 pub fn get_required_type_query(operation : QueryParams, readable : bool) -> String {
     if readable {
         match operation {
-            QueryParams::Size => String::from("a String"),
-            QueryParams::FileCount => String::from("a String"),
+            QueryParams::Folder => String::from("a String"),
+            QueryParams::Subfolder => String::from("a String"),
+            QueryParams::Day => String::from("an integer"),
             _ => String::from("No type found for this parameter (ERROR CODE: 2)")
         }
     } else {
         match operation {
-            QueryParams::Size => String::from("String"),
-            QueryParams::FileCount => String::from("String"),
+            QueryParams::Folder => String::from("String"),
+            QueryParams::Subfolder => String::from("String"),
+            QueryParams::Day => String::from("usize"),
             _ => String::from("invalid")
         }
     }

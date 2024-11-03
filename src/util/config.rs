@@ -24,12 +24,17 @@ pub struct FileStructure {
 
 pub enum ParsedReturn {
     Config(Config),
-    Query(Query),
+    Query(Query, bool),
 }
 
+#[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub enum Query{
-    Size,
-    FileCount,
+    None,
+    General,
+    Source,
+    Folder(String),
+    SubfoldersOf(String),
+    Day(usize),
 }
 
 impl FileStructure {
@@ -109,6 +114,10 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
 
     let mut project: ProjectSetup;
     let structure: FileStructure;
+
+    let mut query: Query = Query::None;
+    let mut write_query = false;
+
     if load {
         let project_result = Config::read_config("config.toml");
         project = match project_result {
@@ -151,7 +160,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                 InitParams::Days => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..]),
                 InitParams::Cameras => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..]),
                 InitParams::SoundSources => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..]),
-                other => panic!("No defined instruction for processing \"{}\" (ERROR CODE: 1)", other.to_string()),
+                InitParams::None => {}, // Should be inaccessible
             }
             next_init_param = InitParams::None
         }
@@ -162,31 +171,86 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
         panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type_init(next_init_param, true));
     }
 
-    while args_to_process > 0 && op_type != &OperationType::Query {
+    while args_to_process > 0 && op_type == &OperationType::Query {
         arg_index += 1;
         let current_arg = &args[arg_index][..];
 
+
         if next_query_param == QueryParams::None {
             match current_arg {
-                "-s" => next_query_param = QueryParams::Size,
-                "--size" => next_query_param = QueryParams::Size,
-                "-f" => next_query_param = QueryParams::FileCount,
-                "--filecount" => next_query_param = QueryParams::FileCount,
+                "-w" => write_query = true,
+                "--write" => write_query = true,
+                "-g" => {
+                    if query == Query::None{
+                        query = Query::General
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                "--general" => {
+                    if query == Query::None{
+                        query = Query::General;
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                "-s" => {
+                    if query == Query::None{
+                        query = Query::Source;
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                "--source" => {
+                    if query == Query::None{
+                        query = Query::Source;
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                "-f" => next_query_param = QueryParams::Folder,
+                "--folder" => next_query_param = QueryParams::Folder,
+                "-sf" => next_query_param = QueryParams::Subfolder,
+                "--subfolders" => next_query_param = QueryParams::Subfolder,
+                "-d" => next_query_param = QueryParams::Day,
+                "--day" => next_query_param = QueryParams::Day,
                 other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
             }
         } else {
             match next_query_param {
-                QueryParams::Size => {}, //TODO
-                QueryParams::FileCount => {} ,
-                other => panic!("No defined instruction for processing \"{}\" (ERROR CODE: 1)", other.to_string()),
+                QueryParams::Folder => {
+                    if query == Query::None{
+                        query = Query::Folder(String::from(current_arg));
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                QueryParams::Subfolder => {
+                    if query == Query::None{
+                        query = Query::SubfoldersOf(String::from(current_arg));
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                } ,
+                QueryParams::Day => {
+                    if query == Query::None{
+                        query = Query::Folder(current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_query(next_query_param, true))[..]),);
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                QueryParams::None => {}, // Empty process (this should not be reachable)
             }
             next_query_param = QueryParams::None
         }
         args_to_process -= 1;
     }
 
-    if next_init_param != InitParams::None && op_type == &OperationType::Query {
+    if next_query_param != QueryParams::None && op_type == &OperationType::Query {
         panic!("Parameter \"{}\" accepts values of {}!", args[arg_index], init::get_required_type_query(next_query_param, true));
+    }
+    if query == Query::None {
+        panic!("No query type specified!");
     }
 
     if op_type != &OperationType::Query {
@@ -198,7 +262,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
             }
         )
     } else {
-        ParsedReturn::Query(Query::Size) // TODO: change Query::Size to selected query
+        ParsedReturn::Query(query, write_query)
     }
 
     

@@ -2,12 +2,17 @@ mod util;
 
 extern crate walkdir;
 use walkdir::WalkDir;
-use std::{env, fs, io::empty, path::Path, process};
-use util::{config::{self, new_config, Config, ConfigError}, init::{self, InitParams, OperationType, ProjectSetup}};
+use std::{env, fs, path::Path, process};
+use util::{config::{self, new_config, Config, ConfigError, ParsedReturn, Query}, init::{self, InitParams, OperationType, ProjectSetup}};
+use util::query;
+use crate::query::query;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let config : Config;
+    let mut config : Config;
+    config = new_config();
+    let mut query_to_ask = Query::None;
+    let mut write_query = false;
     let old_config : Option<Config> = if Path::new("config.toml").exists() {
         let config_result = Config::read_config("config.toml");
         let config = match config_result {
@@ -28,18 +33,18 @@ fn main() {
             process::exit(0);
     }
 
-    config = match &args[1][..] {
+    let parsed_return = match &args[1][..] {
         "new" => {
             operation_type = OperationType::New;
-            config::parse_to_config(args, false, &operation_type)
+            config::parse_args(args, false, &operation_type)
         },
         "update" => {
             operation_type = OperationType::Update;
-            config::parse_to_config(args, true, &operation_type)
+            config::parse_args(args, true, &operation_type)
         },
         "query" => {
             operation_type = OperationType::Query;
-            config::parse_to_config(args, true, &operation_type)
+            config::parse_args(args, true, &operation_type)
         },
         _ => {
             println!("TODO: Help DOCUMENTATION");
@@ -47,11 +52,16 @@ fn main() {
         },
     };
 
+    match parsed_return {
+        ParsedReturn::Config(returned_config) => {config = returned_config},
+        ParsedReturn::Query(returned_query, write) => {query_to_ask = returned_query; write_query = write},
+    }
+    
     // dbg!(&config);
     if operation_type != OperationType::Query{
         setup(old_config, config, operation_type);
     } else{
-
+        query(query_to_ask, config, write_query);
     }
 }
 
