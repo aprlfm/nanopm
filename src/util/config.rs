@@ -249,7 +249,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
     if next_query_param != QueryParams::None && op_type == &OperationType::Query {
         panic!("Parameter \"{}\" accepts values of {}!", args[arg_index], init::get_required_type_query(next_query_param, true));
     }
-    if query == Query::None {
+    if query == Query::None && op_type == &OperationType::Query {
         panic!("No query type specified!");
     }
 
