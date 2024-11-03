@@ -1,3 +1,0 @@
-query_of_folder = "Untitled"
-file_count = 1
-total_size = 4267000411
