@@ -14,7 +14,7 @@ pub enum InitParams {
 pub enum QueryParams {
     None,
     Folder,
-    Subfolder,
+    FolderRecursive,
     Day,
 }
 
@@ -43,7 +43,7 @@ impl QueryParams {
         match &self {
             QueryParams::None => String::from("None"),
             QueryParams::Folder => String::from("Folder"),
-            QueryParams::Subfolder => String::from("Subfolder"),
+            QueryParams::FolderRecursive => String::from("Folder Recursive"),
             QueryParams::Day => String::from("Day"),
         }
     }
@@ -98,14 +98,14 @@ pub fn get_required_type_query(operation : QueryParams, readable : bool) -> Stri
     if readable {
         match operation {
             QueryParams::Folder => String::from("a String"),
-            QueryParams::Subfolder => String::from("a String"),
+            QueryParams::FolderRecursive => String::from("a String"),
             QueryParams::Day => String::from("an integer"),
             _ => String::from("No type found for this parameter (ERROR CODE: 2)")
         }
     } else {
         match operation {
             QueryParams::Folder => String::from("String"),
-            QueryParams::Subfolder => String::from("String"),
+            QueryParams::FolderRecursive => String::from("String"),
             QueryParams::Day => String::from("usize"),
             _ => String::from("invalid")
         }

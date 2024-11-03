@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Deserialize, Serialize)]
 enum QueryResult{
     GeneralResult(GeneralResult),
-    FileTypeResult(FileTypeResult),
+    FullResult(FullResult),
 }
 
 impl QueryResult{
@@ -30,16 +30,16 @@ struct GeneralResult{
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct FileTypeResult{
+struct FullResult{
 
 }
 
 pub fn query(query: Query, config: Config, write: bool) {
     match query {
         Query::General => {query_general(config, write);},
-        Query::Source => {query_by_source(write);},
+        Query::All => {query_all(write);},
         Query::Folder(folder) => {query_by_folder(folder, write);},
-        Query::SubfoldersOf(folder) => {query_subfolders_of(folder, write);},
+        Query::FolderRecursive(folder) => {query_folder_recursive(folder, write);},
         Query::Day(day) => {query_by_day(day, write);},
         Query::None => {}, // Unreachable
     }
@@ -61,15 +61,15 @@ pub fn query_general(config: Config, write: bool) {
     }
 }
 
-pub fn query_by_source(write: bool) {
+pub fn query_all(write: bool) {
 
 }
 
-pub fn query_by_folder(folder : String, write: bool) {
-    
+pub fn query_by_folder(folder : Vec<String>, write: bool) {
+    dbg!(folder);
 }
 
-pub fn query_subfolders_of(folder : String, write: bool) {
+pub fn query_folder_recursive(folder : String, write: bool) {
     
 }
 

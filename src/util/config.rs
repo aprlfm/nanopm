@@ -31,9 +31,9 @@ pub enum ParsedReturn {
 pub enum Query{
     None,
     General,
-    Source,
-    Folder(String),
-    SubfoldersOf(String),
+    All,
+    Folder(Vec<String>),
+    FolderRecursive(String),
     Day(usize),
 }
 
@@ -171,6 +171,8 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
         panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type_init(next_init_param, true));
     }
 
+    let mut folders_to_search: Vec<String> = Vec::new();
+
     while args_to_process > 0 && op_type == &OperationType::Query {
         arg_index += 1;
         let current_arg = &args[arg_index][..];
@@ -194,24 +196,24 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "-s" => {
+                "-a" => {
                     if query == Query::None{
-                        query = Query::Source;
+                        query = Query::All;
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "--source" => {
+                "--all" => {
                     if query == Query::None{
-                        query = Query::Source;
+                        query = Query::All;
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
                 "-f" => next_query_param = QueryParams::Folder,
                 "--folder" => next_query_param = QueryParams::Folder,
-                "-sf" => next_query_param = QueryParams::Subfolder,
-                "--subfolders" => next_query_param = QueryParams::Subfolder,
+                "-fr" => next_query_param = QueryParams::FolderRecursive,
+                "--folder-recursive" => next_query_param = QueryParams::FolderRecursive,
                 "-d" => next_query_param = QueryParams::Day,
                 "--day" => next_query_param = QueryParams::Day,
                 other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
@@ -220,21 +222,25 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
             match next_query_param {
                 QueryParams::Folder => {
                     if query == Query::None{
-                        query = Query::Folder(String::from(current_arg));
+                        folders_to_search.push(String::from(current_arg));
+                        query = Query::Folder(folders_to_search.clone());
+                    } else if query == Query::Folder(folders_to_search.clone()){
+                        folders_to_search.push(String::from(current_arg));
+                        query = Query::Folder(folders_to_search.clone());
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                QueryParams::Subfolder => {
+                QueryParams::FolderRecursive => {
                     if query == Query::None{
-                        query = Query::SubfoldersOf(String::from(current_arg));
+                        query = Query::FolderRecursive(String::from(current_arg));
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 } ,
                 QueryParams::Day => {
                     if query == Query::None{
-                        query = Query::Folder(current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_query(next_query_param, true))[..]),);
+                        query = Query::Day(current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_query(next_query_param, true))[..]),);
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
