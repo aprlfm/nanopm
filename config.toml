@@ -3,7 +3,7 @@ version = "v1"
 [setup]
 name = "Untitled"
 days = 2
-cameras = 3
+cameras = 2
 sound_sources = 1
 
 # Edit below section at your own risk (the following changes file structure on future "update" calls)

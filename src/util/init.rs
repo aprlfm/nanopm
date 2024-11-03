@@ -37,15 +37,18 @@ pub struct ProjectSetup {
     pub days : usize,
     pub cameras : usize,
     pub sound_sources: usize,
+    #[serde(skip_serializing, default)]
+    pub clean_project: bool,
 }
 
 pub fn new_project_setup() -> ProjectSetup{
     ProjectSetup{
         name : String::from("Untitled"),
-        deadname: Some(String::from("NO_DEAD_NAME")),
+        deadname: None,
         days : 2,
         cameras : 2,
         sound_sources : 1,
+        clean_project : false,
     }
 }
 

@@ -1,6 +1,8 @@
 mod util;
 
-use std::{env, fs, path::Path, process};
+extern crate walkdir;
+use walkdir::WalkDir;
+use std::{env, fs, io::empty, path::Path, process};
 use util::{config::{self, new_config, Config, ConfigError}, init::{self, InitParams, OperationType, ProjectSetup}};
 
 fn main() {
@@ -158,7 +160,7 @@ fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationTy
         }
     }
 
-    for path in paths {
+    for path in &paths {
         if !Path::new(&path).exists() {
             match fs::create_dir(&path).map_err(|e| ConfigError::IoError(e)) {
                 Ok(()) => {},
@@ -179,7 +181,45 @@ fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationTy
             std::process::exit(1);
         },
     };
-    
+
+    // clean project will remove any empty folders in the project that are not defined.
+    if config.setup.clean_project {
+        for file in WalkDir::new(format!("./{}",setup.name)).into_iter().filter_map(|file| file.ok()) {
+            if file.metadata().unwrap().is_dir() {
+                if WalkDir::new(file.path()).into_iter().nth(1).is_none() {
+                    let empty_directory = file.path().to_string_lossy().replace("\\", "/");
+                    // if empty_directory.len() > 0 {
+                    //     empty_directory.remove(0);  // remove first
+                    // }
+                    let mut should_exist = false;
+                    for path in &paths {
+                        let mut comparable_path = path.clone();
+                        comparable_path.insert_str(0,"./");
+                        comparable_path.pop();
+                        // dbg!(&comparable_path);
+                        // dbg!(&empty_directory);
+                        if comparable_path == empty_directory {
+                            should_exist = true;
+                            break;
+                        }
+                    }
+                    if !should_exist {
+                        match fs::remove_dir(&empty_directory) {
+                            Ok(()) => {
+                                println!("Managed to delete empty directory {}", &empty_directory);
+                            },
+                            Err(error) => {
+                                eprintln!("Line {}: Program failed to delete a folder it thought was empty!: {}", line!(), error);
+                                std::process::exit(1);
+                            }
+                        }
+
+                    }
+                    dbg!("{}", empty_directory);
+                }
+            }
+        }
+    }
 }
 
 // initializes the main folder, optionally renaming an older folder given the correct conditions.

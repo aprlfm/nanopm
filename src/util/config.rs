@@ -127,6 +127,8 @@ pub fn parse_to_config(args : Vec<String>, load : bool) -> Config {
                 "--cameras" => next_operation = InitParams::Cameras,
                 "-s" => next_operation = InitParams::SoundSources,
                 "--sound-sources" => next_operation = InitParams::SoundSources,
+                "-cl" => project.clean_project = true,
+                "--clean" => project.clean_project = true,
                 other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
             }
         } else {
