@@ -289,7 +289,7 @@ fn num_to_char(num: usize) -> char {
 
 fn help() {
     println!("
-nanopm v(0.1.0) || https://nanomotions.org || https://github.com/kaweepatinn1/nanopm
+nano project manager v(0.1.0) || https://nanomotions.org || https://github.com/kaweepatinn1/nanopm
 
 Usage: nanopm [OPERATION] [ARGUMENTS]
 
