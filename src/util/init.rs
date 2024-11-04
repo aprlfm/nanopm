@@ -13,9 +13,8 @@ pub enum InitParams {
 #[derive(Eq, PartialEq, Debug)]
 pub enum QueryParams {
     None,
+    OutputDir,
     Folder,
-    FolderRecursive,
-    Day,
 }
 
 #[derive(Eq, PartialEq, Debug)]
@@ -42,9 +41,8 @@ impl QueryParams {
     pub fn _to_string(&self) -> String {
         match &self {
             QueryParams::None => String::from("None"),
+            QueryParams::OutputDir => String::from("Output Directory"),
             QueryParams::Folder => String::from("Folder"),
-            QueryParams::FolderRecursive => String::from("Folder Recursive"),
-            QueryParams::Day => String::from("Day"),
         }
     }
 }
@@ -80,7 +78,7 @@ pub fn get_required_type_init(operation : InitParams, readable : bool) -> String
             InitParams::Days => String::from("an integer"),
             InitParams::Cameras => String::from("an integer"),
             InitParams::SoundSources => String::from("an integer"),
-            _ => String::from("No type found for this parameter (ERROR CODE: 2)")
+            InitParams::None => String::from("None"), // should be unreachable
         }
     } else {
         match operation {
@@ -89,7 +87,7 @@ pub fn get_required_type_init(operation : InitParams, readable : bool) -> String
             InitParams::Days => String::from("usize"),
             InitParams::Cameras => String::from("usize"),
             InitParams::SoundSources => String::from("usize"),
-            _ => String::from("invalid")
+            InitParams::None => String::from("None"),// should be unreachable
         }
     }
 }
@@ -98,16 +96,14 @@ pub fn get_required_type_query(operation : QueryParams, readable : bool) -> Stri
     if readable {
         match operation {
             QueryParams::Folder => String::from("a String"),
-            QueryParams::FolderRecursive => String::from("a String"),
-            QueryParams::Day => String::from("an integer"),
-            _ => String::from("No type found for this parameter (ERROR CODE: 2)")
+            QueryParams::OutputDir => String::from("a String"),
+            QueryParams::None => String::from("None"),// should be unreachable
         }
     } else {
         match operation {
             QueryParams::Folder => String::from("String"),
-            QueryParams::FolderRecursive => String::from("String"),
-            QueryParams::Day => String::from("usize"),
-            _ => String::from("invalid")
+            QueryParams::OutputDir => String::from("String"),
+            QueryParams::None => String::from("None"), // should be unreachable
         }
     }
 }

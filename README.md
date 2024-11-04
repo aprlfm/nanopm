@@ -1,0 +1,2 @@
+Queries can be either a general query [-g], any combination of [-r, -d, -c, -s] type queries, or any amount of [-f] folder queries. Folder queries allow [-ss] sort by size.
+Any query can choose to write the queried data to a file with [-w]. 

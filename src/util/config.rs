@@ -1,5 +1,6 @@
 use config::{Config as ConfigLoader, File, FileFormat};
 use serde::{Deserialize, Serialize};
+use std::clone;
 use std::usize;
 use std::fmt;
 use toml;
@@ -24,17 +25,56 @@ pub struct FileStructure {
 
 pub enum ParsedReturn {
     Config(Config),
-    Query(Query, bool),
+    Query(QueryInfo),
+}
+
+pub struct QueryInfo{
+    pub query: Query, 
+    pub settings: QuerySettings,
+}
+
+impl QueryInfo{
+    pub fn new_query_info() -> Self {
+        QueryInfo{
+            query: Query::None,
+            settings: QuerySettings::default(),
+        }
+    }
+} 
+
+#[derive(Debug)]
+pub struct QuerySettings{
+    pub write: bool,
+    pub output_name: Option<String>,
+    pub record_timestamp: bool,
+    pub unique_entries: bool,
+}
+
+impl QuerySettings{
+    pub fn default() -> Self {
+        QuerySettings{
+            write: false,
+            output_name: None,
+            record_timestamp: false,
+            unique_entries: false,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq)]
 pub enum Query{
     None,
     General,
-    All,
+    Partial(Vec<QueryType>),
     Folder(Vec<String>),
-    FolderRecursive(String),
-    Day(usize),
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+pub enum QueryType{
+    Root,
+    Days,
+    Cams,
+    Sound,
 }
 
 impl FileStructure {
@@ -98,13 +138,15 @@ impl Config {
     }
 }
 
-pub fn new_config() -> Config {
-    Config {
-        version : String::from("v1"),
-        setup : init::new_project_setup(),
-        file_structure : FileStructure::get_default_structure(),
+impl Config{
+    pub fn new_config() -> Self {
+        Config {
+            version : String::from("v1"),
+            setup : init::new_project_setup(),
+            file_structure : FileStructure::get_default_structure(),
+        }
     }
-}
+} 
 
 pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> ParsedReturn {
     let mut args_to_process = args.len() - 2;
@@ -115,8 +157,8 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
     let mut project: ProjectSetup;
     let structure: FileStructure;
 
-    let mut query: Query = Query::None;
-    let mut write_query = false;
+    let mut query = Query::None;
+    let mut query_settings = QuerySettings::default();
 
     if load {
         let project_result = Config::read_config("config.toml");
@@ -139,18 +181,12 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
         
         if next_init_param == InitParams::None {
             match current_arg {
-                "-n" => next_init_param = InitParams::ProjName,
-                "--name" => next_init_param = InitParams::ProjName,
-                "-dn" => next_init_param = InitParams::DeadName,
-                "--deadname" => next_init_param = InitParams::DeadName,
-                "-d" => next_init_param = InitParams::Days,
-                "--days" => next_init_param = InitParams::Days,
-                "-c" => next_init_param = InitParams::Cameras,
-                "--cameras" => next_init_param = InitParams::Cameras,
-                "-s" => next_init_param = InitParams::SoundSources,
-                "--sound-sources" => next_init_param = InitParams::SoundSources,
-                "-cl" => project.clean_project = true,
-                "--clean" => project.clean_project = true,
+                "-n" | "--name" => next_init_param = InitParams::ProjName,
+                "-dn" | "--deadname" => next_init_param = InitParams::DeadName,
+                "-d" | "--days" => next_init_param = InitParams::Days,
+                "-c" | "--cameras" => next_init_param = InitParams::Cameras,
+                "-s" | "--sound-sources" => next_init_param = InitParams::SoundSources,
+                "-cl" | "--clean" => project.clean_project = true,
                 other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
             }
         } else {
@@ -171,6 +207,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
         panic!("Parameter \"{}\" should be followed by {}!", args[arg_index], init::get_required_type_init(next_init_param, true));
     }
 
+    let mut queries_to_run: Vec<QueryType> = Vec::new();
     let mut folders_to_search: Vec<String> = Vec::new();
 
     while args_to_process > 0 && op_type == &OperationType::Query {
@@ -180,71 +217,67 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
 
         if next_query_param == QueryParams::None {
             match current_arg {
-                "-w" => write_query = true,
-                "--write" => write_query = true,
-                "-g" => {
-                    if query == Query::None{
-                        query = Query::General
-                    } else{
-                        panic!("Cannot have more than one query type!");
-                    }
+                "-w" | "--write" => {
+                    query_settings.write = true;
+                    next_query_param = QueryParams::OutputDir;
                 },
-                "--general" => {
+                "-t" | "--timestamp" => query_settings.record_timestamp = true,
+                "-u" | "--unique" => query_settings.unique_entries = true,
+                "-g" | "--general" => {
                     if query == Query::None{
                         query = Query::General;
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "-a" => {
-                    if query == Query::None{
-                        query = Query::All;
+                "-r" | "--root" => {
+                    if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
+                        queries_to_run.push(QueryType::Root);
+                        query = Query::Partial(queries_to_run.clone());
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "--all" => {
-                    if query == Query::None{
-                        query = Query::All;
+                "-d" | "--day" => {
+                    if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
+                        queries_to_run.push(QueryType::Days);
+                        query = Query::Partial(queries_to_run.clone());
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "-f" => next_query_param = QueryParams::Folder,
-                "--folder" => next_query_param = QueryParams::Folder,
-                "-fr" => next_query_param = QueryParams::FolderRecursive,
-                "--folder-recursive" => next_query_param = QueryParams::FolderRecursive,
-                "-d" => next_query_param = QueryParams::Day,
-                "--day" => next_query_param = QueryParams::Day,
+                "-c" | "--cam" => {
+                    if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
+                        queries_to_run.push(QueryType::Cams);
+                        query = Query::Partial(queries_to_run.clone());
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                "-s" | "--sound" => {
+                    if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
+                        queries_to_run.push(QueryType::Sound);
+                        query = Query::Partial(queries_to_run.clone());
+                    } else {
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                "-f" | "--folder" => next_query_param = QueryParams::Folder,
                 other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
             }
         } else {
             match next_query_param {
                 QueryParams::Folder => {
-                    if query == Query::None{
-                        folders_to_search.push(String::from(current_arg));
-                        query = Query::Folder(folders_to_search.clone());
-                    } else if query == Query::Folder(folders_to_search.clone()){
+                    if query == Query::None || query == Query::Folder(folders_to_search.clone()) {
                         folders_to_search.push(String::from(current_arg));
                         query = Query::Folder(folders_to_search.clone());
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                QueryParams::FolderRecursive => {
-                    if query == Query::None{
-                        query = Query::FolderRecursive(String::from(current_arg));
-                    } else{
-                        panic!("Cannot have more than one query type!");
-                    }
-                } ,
-                QueryParams::Day => {
-                    if query == Query::None{
-                        query = Query::Day(current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_query(next_query_param, true))[..]),);
-                    } else{
-                        panic!("Cannot have more than one query type!");
-                    }
-                },
+                QueryParams::OutputDir => {
+                    query_settings.output_name = Some(String::from(current_arg));
+                }
                 QueryParams::None => {}, // Empty process (this should not be reachable)
             }
             next_query_param = QueryParams::None
@@ -268,7 +301,11 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
             }
         )
     } else {
-        ParsedReturn::Query(query, write_query)
+        ParsedReturn::Query(
+            QueryInfo{
+                query: query, 
+                settings: query_settings
+            })
     }
 
     

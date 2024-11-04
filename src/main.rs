@@ -3,16 +3,16 @@ mod util;
 extern crate walkdir;
 use walkdir::WalkDir;
 use std::{env, fs, path::Path, process};
-use util::{config::{self, new_config, Config, ConfigError, ParsedReturn, Query}, init::{self, InitParams, OperationType, ProjectSetup}};
+use util::{config::{self, Config, ConfigError, ParsedReturn, Query, QueryInfo}, init::{self, InitParams, OperationType, ProjectSetup}};
 use util::query;
 use crate::query::query;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
     let mut config : Config;
-    config = new_config();
+    config = Config::new_config();
     let mut query_to_ask = Query::None;
-    let mut write_query = false;
+    let mut query_info_to_pass = QueryInfo::new_query_info();
     let old_config : Option<Config> = if Path::new("config.toml").exists() {
         let config_result = Config::read_config("config.toml");
         let config = match config_result {
@@ -54,19 +54,19 @@ fn main() {
 
     match parsed_return {
         ParsedReturn::Config(returned_config) => {config = returned_config},
-        ParsedReturn::Query(returned_query, write) => {query_to_ask = returned_query; write_query = write},
+        ParsedReturn::Query(returned_query) => {query_info_to_pass = returned_query},
     }
     
     // dbg!(&config);
     if operation_type != OperationType::Query{
         setup(old_config, config, operation_type);
     } else{
-        query(query_to_ask, config, write_query);
+        query(query_info_to_pass, config);
     }
 }
 
 fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationType){
-    let mut old_config = new_config();
+    let mut old_config = Config::new_config();
     let mut old_config_exists = false;
     match old_config_option {
         Some(config) => {old_config = config; old_config_exists = true},
@@ -136,7 +136,7 @@ fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationTy
                         let mut new_paths_vector: Vec<String> = Vec::new();
                         for i in 1..setup.cameras + 1 {
                             let padded_number = format!("{:0>2}", i);
-                            let folder_name = format!("/{x}_{y}_CAM", x = padded_number, y = num_to_char(i).expect("Soft limit for cameras is 26!").to_string());
+                            let folder_name = format!("/{x}_{y}_CAM", x = padded_number, y = num_to_char(i).to_string());
                             for path in &mut paths_to_append {
                                 let mut new_path = path.clone();
                                 new_path.insert_str(0, &folder_name);
@@ -149,7 +149,7 @@ fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationTy
                         let mut new_paths_vector: Vec<String> = Vec::new();
                         for i in 1..setup.sound_sources + 1 {
                             let padded_number = format!("{:0>2}", i);
-                            let folder_name = format!("/{x}_{y}_REC", x = padded_number, y = num_to_char(i).expect("Soft limit for sound recorders is 26!").to_string());
+                            let folder_name = format!("/{x}_{y}_REC", x = padded_number, y = num_to_char(i).to_string());
                             for path in &mut paths_to_append {
                                 let mut new_path = path.clone();
                                 new_path.insert_str(0, &folder_name);
@@ -264,10 +264,11 @@ fn initialize_main_folder_deadname(deadname: &String, setup: &ProjectSetup) -> s
     Ok(())
 }
 
-fn num_to_char(num: usize) -> Option<char> {
+fn num_to_char(num: usize) -> char {
     if num >= 1 && num <= 26 {
-        Some((num as u8 + b'A' - 1) as char)
+        (num as u8 + b'A' - 1) as char
     } else {
-        None // Return None if the number is out of range
+        let char: char = '_';
+        char
     }
 }
