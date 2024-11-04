@@ -5,6 +5,7 @@ use std::fmt;
 use toml;
 use crate::{init, InitParams, ProjectSetup};
 use crate::util::util::get_version;
+use core::mem::discriminant as tag;
 
 use super::init::new_project_setup;
 use super::init::OperationType;
@@ -60,12 +61,49 @@ impl QuerySettings{
     }
 }
 
-#[derive(Debug, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Deserialize, Serialize)]
 pub enum Query{
     None,
-    General,
+    General(SortType),
     Partial(Vec<QueryType>),
     Folder(Vec<String>),
+}
+
+impl PartialEq<Self> for Query {
+    fn eq(&self, rhs: &Self) -> bool {
+        tag(self) == tag(rhs)
+    }
+}
+
+impl Query {
+    pub fn get_sort_type(&self) -> &SortType {
+        match &self {
+            Query::General(sort_type) => {
+                sort_type
+            },
+            _ => {
+                panic!("Tried to get sort type of a non general query! (No sort type exists)")
+            }
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
+pub enum SortType{
+    None,
+    BySize,
+    ByDefaultOrder,
+}
+
+impl SortType{
+    pub fn default_sort_type() -> Self{
+        SortType::ByDefaultOrder
+    }
+
+    // Used to show that any SortType variant can be placed in that location (usually used with custom PartialEq impl).
+    pub fn any() -> Self{
+        SortType::None
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
@@ -224,7 +262,22 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                 "-u" | "--unique" => query_settings.unique_entries = true,
                 "-g" | "--general" => {
                     if query == Query::None{
-                        query = Query::General;
+                        query = Query::General(SortType::default_sort_type());
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                "-ss" | "--sort-size" => {
+                    if query == Query::General(SortType::any()){
+                        query = Query::General(SortType::BySize);
+                    } else{
+                        panic!("Cannot have more than one query type!");
+                    }
+                },
+                "-sd" | "--sort-default" => {
+                    if query == Query::General(SortType::any()){
+                        dbg!(query);
+                        query = Query::General(SortType::ByDefaultOrder);
                     } else{
                         panic!("Cannot have more than one query type!");
                     }

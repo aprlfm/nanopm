@@ -3,11 +3,12 @@ extern crate chrono;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
+use core::panic;
 use std::io;
 use std::time::SystemTime;
 use fs_extra::dir::get_dir_content;
 use crate::{Query, num_to_char};
-use crate::config::{Config, QueryInfo, QuerySettings, QueryType};
+use crate::config::{Config, QueryInfo, QuerySettings, QueryType, SortType};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -43,11 +44,25 @@ impl QueryResult{
         },
         }
     }
+
+    fn get_general_result(&self) -> &GeneralResult {
+        match self {
+            QueryResult::GeneralResult(r) => {
+                r
+            },
+            _ => {panic!("Not a General Result!")}
+        }
+    }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Eq, Ord, PartialEq, PartialOrd)]
 pub struct GeneralResult{
-
+    path: String,
+    folder_name : String,
+    file_count : usize,
+    total_size : String,
+    #[serde(skip_serializing)]
+    total_size_u64 : u64,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -99,7 +114,7 @@ pub struct FolderResult{
 
 pub fn query(query: QueryInfo, config: Config) {
     match query.query {
-        Query::General => {query_general(config, query.settings);},
+        Query::General(sort_type) => {query_general(sort_type, config, query.settings);},
         Query::Partial(types) => {query_partial(types, config, query.settings);},
         Query::Folder(folders) => {query_folders(folders, config, query.settings);},
         Query::None => {}, // Unreachable
@@ -110,7 +125,7 @@ pub fn query_partial(types_to_query: Vec<QueryType>, config: Config, settings: Q
     let mut query_results: Vec<QueryResult> = Vec::new();
     for query in types_to_query {
         let mut new_query_results: Vec<QueryResult> = match query {
-            QueryType::Root => {query_root(&config)},
+            QueryType::Root => {vec![query_root(&config)]},
             QueryType::Days | QueryType::Cams | QueryType::Sound => {query_iterable(&config, &settings, query)},
         };
         query_results.append(&mut new_query_results);
@@ -118,8 +133,62 @@ pub fn query_partial(types_to_query: Vec<QueryType>, config: Config, settings: Q
     write_query_results(query_results, settings, Query::Partial(Vec::new()));
 }
 
-pub fn query_general(config: Config, settings: QuerySettings) {
-
+pub fn query_general(sort_type: SortType, config: Config, settings: QuerySettings) {
+    let folders: Vec<String> = vec![
+        String::from("01_DOCUMENTATION"),
+        String::from("01_VIDEO"),
+        String::from("02_AUDIO"),
+        String::from("03_VO"),
+        String::from("01_GRAPHICS"),
+        String::from("02_IMAGES"),
+        String::from("03_MUSIC"),
+        String::from("04_SFX"),
+        String::from("05_COMPS"),
+        String::from("04_PRE-RENDERS"),
+        String::from("05_FINALS"),
+    ];
+    let root_path = &format!("./{}",config.setup.name);
+    let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
+    let mut query_results = Vec::new();
+    for folder in folders {
+        for file in &mut all_files.directories {
+            let mut file_name_percent = file.clone();
+            file_name_percent.push('%');
+            // Push % to file name to see if the string is at the end of the directory
+            // dbg!(&format!("{}%", &folder));
+            // dbg!(&file_name_percent);
+            match &file_name_percent.find(&format!("{}%", &folder)) {
+                Some(_) => {
+                    let file_data = get_dir_content(&file).expect("Could not get directory content!");
+                    query_results.push(QueryResult::GeneralResult(
+                        GeneralResult{
+                            path: file.replace("\\", "/"),
+                            folder_name: folder.clone(),
+                            file_count: file_data.files.len(), 
+                            total_size: to_shorthand(file_data.dir_size),
+                            total_size_u64: file_data.dir_size,
+                        }
+                    ));
+                }
+                None => {}
+            }
+        }
+    }
+    match sort_type {
+        SortType::BySize => {
+            query_results.sort_by(|a, b| 
+                b.get_general_result().total_size_u64
+                .cmp(&a.get_general_result().total_size_u64));
+        },
+        SortType::ByDefaultOrder => {
+            // No sorting required
+        },
+        SortType::None => {
+            // Inaccessible
+        },
+    }
+    query_results.insert(0, query_root(&config));
+    write_query_results(query_results, settings, Query::General(sort_type));
 }
 
 pub fn query_iterable(config: &Config, settings: &QuerySettings, query: QueryType) -> Vec<QueryResult> {
@@ -241,10 +310,10 @@ pub fn query_iterable(config: &Config, settings: &QuerySettings, query: QueryTyp
 }
 
 
-pub fn query_root(config: &Config) -> Vec<QueryResult>{
+pub fn query_root(config: &Config) -> QueryResult{
     let root_path = &format!("./{}",config.setup.name);
     let all_files = get_dir_content(root_path).expect("Could not get directory content!");
-    vec![QueryResult::RootResult( 
+    QueryResult::RootResult( 
         RootResult{
             project_name: config.setup.name.to_string(),
             file_count: all_files.files.len(), 
@@ -253,7 +322,7 @@ pub fn query_root(config: &Config) -> Vec<QueryResult>{
             camera_count: config.setup.cameras,
             sound_source_count: config.setup.sound_sources,
         }
-    )]
+    )
 }
 
 // if multiple folders share the same name, each will be printed individually.
@@ -293,22 +362,34 @@ pub fn write_query_results(query_results: Vec<QueryResult>, settings: QuerySetti
         full_text.push_str(&format!("{}\n",text));
     }
     let timestamp: String;
-    let partial_explanation_string: &str;
+    let explanation_string: &str;
     let system_time = SystemTime::now();
     let datetime: DateTime<Utc> = system_time.into();
-    if Query::Partial(Vec::new()) == query_type {
-        partial_explanation_string = (if settings.unique_entries{
+    if query_type == Query::Partial(Vec::new()) {
+        explanation_string = if settings.unique_entries {
             "unique_entries = true # Entries from different days will be displayed separately.\n\n"
         } else {
             "unique_entries = false # Entries from different days will be combined.\n\n"
-        });
-    } else{
-        partial_explanation_string = "";
+        };
+    } else if query_type == Query::General(SortType::any()) {
+        explanation_string = match query_type.get_sort_type() {
+            SortType::ByDefaultOrder => {
+                "General Project Query - Sorted in Default Order\n\n"
+            },
+            SortType::BySize => {
+                "General Project Query - Sorted by Size\n\n"
+            }
+            SortType::None => {
+                panic!("No sort type specified in general query even after passed into actual query!")
+            }
+        }
+    } else {
+        explanation_string = "";
     }
     if settings.record_timestamp{
         timestamp = datetime.format("%d/%m/%Y %T").to_string() + 
         "\n" + 
-        if partial_explanation_string == "" {"\n"} else {""};
+        if explanation_string == "" {"\n"} else {""};
     } else {
         timestamp = String::from("");
     }
@@ -317,17 +398,17 @@ pub fn write_query_results(query_results: Vec<QueryResult>, settings: QuerySetti
         None => String::from(format!("Query_{}.txt", datetime.format("%d.%m.%Y_%T").to_string().replace(":", "."))),
     };
 
-    println!("{}{}", partial_explanation_string, full_text);
+    println!("{}{}", explanation_string, full_text);
 
     if settings.write {
         if !std::fs::exists(&export_path).expect("Can't check existence of file does_not_exist.txt"){
-            std::fs::write(export_path, format!("{}{}{}", timestamp, partial_explanation_string, full_text)).expect("Failed to write query result!");
+            std::fs::write(export_path, format!("{}{}{}", timestamp, explanation_string, full_text)).expect("Failed to write query result!");
         } else {
             println!("A file with that name already exists! Overwrite? (Y/N)");
             let mut response = String::new();
             io::stdin().read_line(&mut response).expect("Failed to read line");
             if response.trim() == "Y" || response.trim() == "y" {
-                std::fs::write(export_path, format!("{}{}{}", timestamp, partial_explanation_string, full_text)).expect("Failed to write query result!");
+                std::fs::write(export_path, format!("{}{}{}", timestamp, explanation_string, full_text)).expect("Failed to write query result!");
                 println!("Overwrote existing file.");
             } else {
                 println!("Did not overwrite existing file.");
@@ -339,27 +420,31 @@ pub fn write_query_results(query_results: Vec<QueryResult>, settings: QuerySetti
 pub fn to_shorthand(bytes: u64) -> String {
     let mut current_number: f64 = bytes as f64;
     let mut expo_10: u32 = 0;
-    while current_number > 1048576f64 || (expo_10 == 0 && current_number > 1024f64) {
+    while current_number > 10240f64 || (expo_10 == 0 && current_number > 1024f64) {
         current_number /= 1024f64;
         expo_10 += 3;
     };
-    let p: &str = match expo_10 {
-        0 => "",
-        3 => "K",
-        6 => "M",
-        9 => "G",
-        12 => "T",
-        15 => "P",
-        18 => "E",
-        21 => "Z",
-        24 => "Y",
+    let mut decimal_points: u32;
+    let prefix: &str = match expo_10 {
+        0 => {decimal_points = 0; ""},
+        3 => {decimal_points = 0; "K"},
+        6 => {decimal_points = 1; "M"},
+        9 => {decimal_points = 1; "G"},
+        12 => {decimal_points = 1; "T"},
+        15 => {decimal_points = 1; "P"},
+        18 => {decimal_points = 1; "E"},
+        21 => {decimal_points = 1; "Z"},
+        24 => {decimal_points = 1; "Y"},
         _ => panic!("Not a valid exponent!"),
     };
-    let ib = current_number;
-    let b:f64 = bytes as f64 / (10u64.pow(expo_10)) as f64;
+    if current_number >= 100.0 {
+        decimal_points = 0;
+    }
+    let ib = ((current_number) * 10f64.powf(decimal_points as f64)).round() / 10f64.powf(decimal_points as f64) as f64;
+    let b:f64 = ((bytes * 10u64.pow(decimal_points)) / (10u64.pow(expo_10))) as f64 / 10u64.pow(decimal_points) as f64;
     if expo_10 == 0 {
         String::from(format!("{b:.0}B"))
     } else {
-        String::from(format!("{ib:.0}{p}iB ({b:.0}{p}B)"))
+        String::from(format!("{ib}{prefix}iB ({b}{prefix}B)"))
     }
 }
