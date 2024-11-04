@@ -18,7 +18,8 @@ fn main() {
             Ok(config) => config,
             Err(error) => {
                 eprintln!("Line {}: Problem opening the file: {}", line!(), error);
-                std::process::exit(2);
+                fs::rename("config.toml", "config_old.toml").map_err(|e| ConfigError::IoError(e)).expect("Could not rename broken config");
+                Config::new_config()
             }
         };
         Some(config)
@@ -94,7 +95,6 @@ fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationTy
                     Ok(file) => file,
                     Err(error) => {
                         eprintln!("Line {}: Problem opening the file: {}", line!(), error);
-                        std::process::exit(1);
                     },
                 };
             },
