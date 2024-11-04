@@ -321,7 +321,7 @@ Arguments:
         GENERAL QUERY:
 
             -g, --general               | Creates a general query of various important project folders. 
-                                          Can return sorted by size.
+                                          Edit the list in config. Can return sorted by size.
                 -ss, --sort-size        | Sorts general query by size. Must be used after a general query.
                 -sd, --sort-default     | Sorts general query by... its default order... Kind of redundant. 
                                           Must be used after a general query.
