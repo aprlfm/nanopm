@@ -134,19 +134,7 @@ pub fn query_partial(types_to_query: Vec<QueryType>, config: Config, settings: Q
 }
 
 pub fn query_general(sort_type: SortType, config: Config, settings: QuerySettings) {
-    let folders: Vec<String> = vec![
-        String::from("01_DOCUMENTATION"),
-        String::from("01_VIDEO"),
-        String::from("02_AUDIO"),
-        String::from("03_VO"),
-        String::from("01_GRAPHICS"),
-        String::from("02_IMAGES"),
-        String::from("03_MUSIC"),
-        String::from("04_SFX"),
-        String::from("05_COMPS"),
-        String::from("04_PRE-RENDERS"),
-        String::from("05_FINALS"),
-    ];
+    let folders: &Vec<String> = &config.general_query_params;
     let root_path = &format!("./{}",config.setup.name);
     let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
     let mut query_results = Vec::new();
@@ -402,14 +390,15 @@ pub fn write_query_results(query_results: Vec<QueryResult>, settings: QuerySetti
 
     if settings.write {
         if !std::fs::exists(&export_path).expect("Can't check existence of file does_not_exist.txt"){
-            std::fs::write(export_path, format!("{}{}{}", timestamp, explanation_string, full_text)).expect("Failed to write query result!");
+            std::fs::write(&export_path, format!("{}{}{}", timestamp, explanation_string, full_text)).expect("Failed to write query result!");
+            println!("Wrote query to file at {}", &export_path);
         } else {
-            println!("A file with that name already exists! Overwrite? (Y/N)");
+            println!("A file with the name {} already exists! Overwrite? (Y/N)", &export_path);
             let mut response = String::new();
             io::stdin().read_line(&mut response).expect("Failed to read line");
             if response.trim() == "Y" || response.trim() == "y" {
-                std::fs::write(export_path, format!("{}{}{}", timestamp, explanation_string, full_text)).expect("Failed to write query result!");
-                println!("Overwrote existing file.");
+                std::fs::write(&export_path, format!("{}{}{}", timestamp, explanation_string, full_text)).expect("Failed to write query result!");
+                println!("Overwrote query to file at {}", export_path);
             } else {
                 println!("Did not overwrite existing file.");
             }

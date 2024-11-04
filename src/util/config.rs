@@ -16,6 +16,7 @@ pub struct Config {
     pub version : String,
     pub setup : init::ProjectSetup,
     pub file_structure : FileStructure,
+    pub general_query_params : Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -87,6 +88,22 @@ impl Query {
             }
         }
     }
+
+    pub fn get_default_general_query() -> Vec<String> {
+        vec![
+        String::from("01_DOCUMENTATION"),
+        String::from("01_VIDEO"),
+        String::from("02_AUDIO"),
+        String::from("03_VO"),
+        String::from("01_GRAPHICS"),
+        String::from("02_IMAGES"),
+        String::from("03_MUSIC"),
+        String::from("04_SFX"),
+        String::from("05_COMPS"),
+        String::from("04_PRE-RENDERS"),
+        String::from("05_FINALS"),
+        ]
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, PartialEq, Clone)]
@@ -153,13 +170,12 @@ pub struct Folder {
 
 impl Config {
     pub fn write_config(config: &Config, file_path: &str) -> Result<(), ConfigError> {
-
         let mut text = toml::to_string(&config)
             .map_err(|e| ConfigError::ParseError(format!("Failed to serialize config: {}", e)))?;
         match &text.find("[[file") {
             Some(index) => {
                 let finalindex = index.clone();
-                text = format!("{}{}{}", &text[..finalindex], "# Edit below section at your own risk (the following changes file structure on future \"update\" calls)\n\n", &text[finalindex..]);
+                text = format!("{}{}{}", &text[..finalindex], "# Edit below section at your own risk (the following changes file structure on \n# future \"update\" calls. Will not move files.)\n\n", &text[finalindex..]);
             }
             None => {}
         }
@@ -182,6 +198,19 @@ impl Config{
             version : String::from("v1"),
             setup : init::new_project_setup(),
             file_structure : FileStructure::get_default_structure(),
+            general_query_params : vec![
+                String::from("01_DOCUMENTATION"),
+                String::from("01_VIDEO"),
+                String::from("02_AUDIO"),
+                String::from("03_VO"),
+                String::from("01_GRAPHICS"),
+                String::from("02_IMAGES"),
+                String::from("03_MUSIC"),
+                String::from("04_SFX"),
+                String::from("05_COMPS"),
+                String::from("04_PRE-RENDERS"),
+                String::from("05_FINALS"),
+            ],
         }
     }
 } 
@@ -194,6 +223,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
 
     let mut project: ProjectSetup;
     let structure: FileStructure;
+    let general_query_params: Vec<String>;
 
     let mut query = Query::None;
     let mut query_settings = QuerySettings::default();
@@ -201,7 +231,10 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
     if load {
         let project_result = Config::read_config("config.toml");
         project = match project_result {
-            Ok(config) => {structure = config.file_structure; config.setup},
+            Ok(config) => {
+                structure = config.file_structure; 
+                general_query_params = config.general_query_params;
+                config.setup},
             Err(error) => {
                 eprintln!("Line {}: Problem opening the file: {}
                 \nIf the file was not found, consider reinitializing the project with nanopm new (optionally add the argument -dn to consider an existing directory as the project directory).
@@ -212,9 +245,11 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
     } else {
         project = new_project_setup();
         structure = FileStructure::get_default_structure();
+        general_query_params = Query::get_default_general_query();
     }
 
     while args_to_process > 0 && op_type != &OperationType::Query {
+        let print_query = if load {"Updated"} else {"Set"};
 
         arg_index += 1;
         let current_arg = &args[arg_index][..];
@@ -226,16 +261,34 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                 "-d" | "--days" => next_init_param = InitParams::Days,
                 "-c" | "--cameras" => next_init_param = InitParams::Cameras,
                 "-s" | "--sound-sources" => next_init_param = InitParams::SoundSources,
-                "-cl" | "--clean" => project.clean_project = true,
+                "-cl" | "--clean" => project.clean_project = {
+                    println!("Cleaning empty folders that are undefined!");
+                    true
+                },
                 other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
             }
         } else {
             match next_init_param {
-                InitParams::ProjName => project.name = String::from(current_arg),
-                InitParams::DeadName => project.deadname = Some(String::from(current_arg)),
-                InitParams::Days => project.days = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..]),
-                InitParams::Cameras => project.cameras = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..]),
-                InitParams::SoundSources => project.sound_sources = current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..]),
+                InitParams::ProjName => project.name = {
+                    println!("{} project name to {}", print_query, current_arg);
+                    String::from(current_arg)
+                },
+                InitParams::DeadName => project.deadname = {
+                    println!("{} deadname to: {}", print_query, current_arg);
+                    Some(String::from(current_arg))
+                },
+                InitParams::Days => project.days = {
+                    println!("{} project days: {}", print_query, current_arg);
+                    current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..])
+                },
+                InitParams::Cameras => project.cameras = {
+                    println!("{} cameras to: {}", print_query, current_arg);
+                    current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..])
+                },
+                InitParams::SoundSources => project.sound_sources = {
+                    println!("{} sound sources to: {}", print_query, current_arg);
+                    current_arg.parse().expect(&format!("Parameter after {} was not {}!", args[arg_index - 1], init::get_required_type_init(next_init_param, true))[..])
+                },
                 InitParams::None => {}, // Should be inaccessible
             }
             next_init_param = InitParams::None
@@ -353,6 +406,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                 version : get_version(),
                 setup : project,
                 file_structure : structure,
+                general_query_params : general_query_params,
             }
         )
     } else {
@@ -362,8 +416,6 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                 settings: query_settings
             })
     }
-
-    
 }
 
 #[derive(Debug)]

@@ -239,6 +239,19 @@ fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationTy
             }
         }
     }
+
+    let setup_to_print_result= toml::to_string(&config.setup)
+    .map_err(|e| ConfigError::ParseError(format!("Failed to serialize config: {}", e)));
+
+    let setup_to_print = match setup_to_print_result {
+        Ok(setup) => setup,
+        Err(error) => {
+            eprintln!("Line {}: Problem opening the file: {}", line!(), error);
+            std::process::exit(1);
+        },
+    };
+
+    println!("\n[Current Project Setup]\n{}", setup_to_print);
 }
 
 // initializes the main folder, optionally renaming an older folder given the correct conditions.
@@ -296,7 +309,7 @@ Arguments:
         -n, --name <String>             | Names the project and its directory. When used with update, uses 
                                           the old config file to rename the old directory to the new name.
         -dn, --deadname <String>        | Looks for a directory with this name, updating it with the new 
-                                          name provided (or default), making it the main project directory.
+                                          name provided if it exists, using it as the new project directory.
         -d, --days <Integer>            | Sets the amount of footage days the project should account for.
         -c, --cameras <Integer>         | Sets the amount of cameras the project should account for.
         -s, --sound-sources <Integer>   | Sets the amount of sound sources the project should account for.
