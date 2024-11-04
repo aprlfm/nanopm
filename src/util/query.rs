@@ -3,6 +3,7 @@ extern crate chrono;
 
 use chrono::offset::Utc;
 use chrono::DateTime;
+use std::io;
 use std::time::SystemTime;
 use fs_extra::dir::get_dir_content;
 use crate::{Query, num_to_char};
@@ -53,7 +54,7 @@ pub struct GeneralResult{
 pub struct RootResult{
     project_name : String,
     file_count : usize,
-    total_size : u64,
+    total_size : String,
     shoot_days: usize,
     camera_count: usize,
     sound_source_count: usize,
@@ -61,30 +62,39 @@ pub struct RootResult{
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct DayResult{
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    path: Option<String>,
     day : String,
     file_count : usize,
-    total_size : u64,
+    total_size : String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct CamResult{
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    path: Option<String>,
     camera : String,
     file_count : usize,
-    total_size : u64,
+    total_size : String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct SoundResult{
-    sound_recorder : String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    path: Option<String>,
+    sound_source : String,
     file_count : usize,
-    total_size : u64,
+    total_size : String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct FolderResult{
     path : String,
     file_count : usize,
-    total_size : u64,
+    total_size : String,
 }
 
 pub fn query(query: QueryInfo, config: Config) {
@@ -96,25 +106,140 @@ pub fn query(query: QueryInfo, config: Config) {
     }
 }
 
-pub fn query_partial(types_to_query: Vec<QueryType>, config: Config, settings: QuerySettings){
+pub fn query_partial(types_to_query: Vec<QueryType>, config: Config, settings: QuerySettings) {
     let mut query_results: Vec<QueryResult> = Vec::new();
     for query in types_to_query {
         let mut new_query_results: Vec<QueryResult> = match query {
             QueryType::Root => {query_root(&config)},
-            QueryType::Days => {query_by_day(&config)},
-            QueryType::Cams => {query_by_cam(&config)},
-            QueryType::Sound => {query_by_sound_recorder(&config)},
+            QueryType::Days | QueryType::Cams | QueryType::Sound => {query_iterable(&config, &settings, query)},
         };
         query_results.append(&mut new_query_results);
-    };
-    if settings.write {
-        write_query_results(query_results, settings);
     }
+    write_query_results(query_results, settings, Query::Partial(Vec::new()));
 }
 
 pub fn query_general(config: Config, settings: QuerySettings) {
 
 }
+
+pub fn query_iterable(config: &Config, settings: &QuerySettings, query: QueryType) -> Vec<QueryResult> {
+    let root_path = &format!("./{}",config.setup.name);
+    let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
+    let mut query_results = Vec::new();
+    let query_specific_params: (usize, String);
+        match query {
+            QueryType::Days => {
+                query_specific_params = (config.setup.days, String::from("[Iter]_DAY[Iter]%"));
+            },
+            QueryType::Cams => {
+                query_specific_params = (config.setup.cameras, String::from("[Iter]_[Char]_CAM%"));
+            },
+            QueryType::Sound => {
+                query_specific_params = (config.setup.sound_sources, String::from("[Iter]_[Char]_REC%"));
+            },
+            QueryType::Root => {panic!("This should be inaccessible!")}, // Inaccessible
+        }
+    if settings.unique_entries {
+        for iter in 1..query_specific_params.0 + 1 {
+            for file in &mut all_files.directories {
+                let mut file_name_percent = file.clone();
+                file_name_percent.push('%');
+                // Push % to file name to see if the string is at the end of the directory
+                match &file_name_percent.find(&query_specific_params.1
+                    .replace("[Iter]", &format!("{:0>2}", iter))
+                    .replace("[Char]", &num_to_char(iter).to_string())) {
+                    Some(_) => {
+                        let file_data = get_dir_content(&file).expect("Could not get directory content!");
+                        
+                        query_results.push(match query {
+                            QueryType::Days => {
+                                QueryResult::DayResult(
+                                    DayResult{
+                                        path: Some(file.replace("\\", "/")),
+                                        day: String::from("Day ") + &iter.to_string(),
+                                        file_count: file_data.files.len(), 
+                                        total_size: to_shorthand(file_data.dir_size),
+                                    }
+                            )},
+                            QueryType::Cams => {
+                                QueryResult::CamResult(
+                                    CamResult{
+                                        path: Some(file.replace("\\", "/")),
+                                        camera: format!("{} Cam ({})",num_to_char(iter),iter.to_string()),
+                                        file_count: file_data.files.len(), 
+                                        total_size: to_shorthand(file_data.dir_size),
+                                    }
+                            )},
+                            QueryType::Sound => {
+                                QueryResult::SoundResult(
+                                    SoundResult{
+                                        path: Some(file.replace("\\", "/")),
+                                        sound_source: format!("{} Rec ({})",num_to_char(iter),iter.to_string()),
+                                        file_count: file_data.files.len(), 
+                                        total_size: to_shorthand(file_data.dir_size),
+                                    }
+                            )},
+                            QueryType::Root => {panic!("This should be inaccessible!")} // Inaccessible
+                        })
+                    }
+                    None => {}
+                }
+            }
+        }
+    } else {
+        for iter in 1..query_specific_params.0 + 1 {
+            let mut file_count: usize = 0;
+            let mut total_size: u64 = 0;
+            for file in &mut all_files.directories {
+                let mut file_name_percent = file.clone();
+                file_name_percent.push('%');
+                // Push % to file name to see if the string is at the end of the directory
+                match &file_name_percent.find(&query_specific_params.1
+                    .replace("[Iter]", &format!("{:0>2}", iter))
+                    .replace("[Char]", &num_to_char(iter).to_string())) {
+                    Some(_) => {
+                        let file_data = get_dir_content(&file).expect("Could not get directory content!");
+                        file_count += file_data.files.len();
+                        total_size += file_data.dir_size;
+                    }
+                    None => {}
+                }
+            }
+            query_results.push(match query {
+                QueryType::Days => {
+                    QueryResult::DayResult(
+                        DayResult{
+                            path: None,
+                            day: String::from("Day ") + &iter.to_string(),
+                            file_count, 
+                            total_size: to_shorthand(total_size),
+                        }
+                )},
+                QueryType::Cams => {
+                    QueryResult::CamResult(
+                        CamResult{
+                            path: None,
+                            camera: format!("{} Cam ({})",num_to_char(iter),iter.to_string()),
+                            file_count, 
+                            total_size: to_shorthand(total_size),
+                        }
+                )},
+                QueryType::Sound => {
+                    QueryResult::SoundResult(
+                        SoundResult{
+                            path: None,
+                            sound_source: format!("{} Rec ({})",num_to_char(iter),iter.to_string()),
+                            file_count, 
+                            total_size: to_shorthand(total_size),
+                        }
+                )},
+                QueryType::Root => {panic!("This should be inaccessible!")} // Inaccessible
+            })
+        }
+    };
+    query_results
+}
+
 
 pub fn query_root(config: &Config) -> Vec<QueryResult>{
     let root_path = &format!("./{}",config.setup.name);
@@ -123,105 +248,12 @@ pub fn query_root(config: &Config) -> Vec<QueryResult>{
         RootResult{
             project_name: config.setup.name.to_string(),
             file_count: all_files.files.len(), 
-            total_size: all_files.dir_size,
+            total_size: to_shorthand(all_files.dir_size),
             shoot_days: config.setup.days,
             camera_count: config.setup.cameras,
             sound_source_count: config.setup.sound_sources,
         }
     )]
-}
-
-pub fn query_by_day(config: &Config) -> Vec<QueryResult> {
-    let root_path = &format!("./{}",config.setup.name);
-    let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
-    let mut query_results = Vec::new();
-    for day_iter in 1..config.setup.cameras + 1 {
-        let mut file_count: usize = 0;
-        let mut total_size: u64 = 0;
-        for file in &mut all_files.directories {
-            let padded_number = format!("{:0>2}", day_iter);
-            let mut file_name_percent = file.clone();
-            file_name_percent.push('%');
-            // Push % to file name to see if the string is at the end of the directory
-            match &file_name_percent.find(&format!("{}_DAY{}%", padded_number, padded_number)) {
-                Some(_) => {
-                    let file_data = get_dir_content(file).expect("Could not get directory content!");
-                    file_count += file_data.files.len();
-                    total_size += file_data.dir_size;
-                }
-                None => {}
-            }
-        }
-        query_results.push(QueryResult::DayResult(
-            DayResult{
-                day: String::from("Day") + &day_iter.to_string(),
-                file_count, total_size,
-            }
-        ));
-    }
-    query_results
-}
-
-pub fn query_by_cam(config: &Config) -> Vec<QueryResult> {
-    let root_path = &format!("./{}",config.setup.name);
-    let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
-    let mut query_results = Vec::new();
-    for camera_iter in 1..config.setup.cameras + 1 {
-        let mut file_count: usize = 0;
-        let mut total_size: u64 = 0;
-        for file in &mut all_files.directories {
-            let padded_number = format!("{:0>2}", camera_iter);
-            let mut file_name_percent = file.clone();
-            file_name_percent.push('%');
-            // Push % to file name to see if the string is at the end of the directory
-            match &file_name_percent.find(&format!("{x}_{y}_CAM%", x = padded_number, y = num_to_char(camera_iter).to_string())) {
-                Some(_) => {
-                    let file_data = get_dir_content(file).expect("Could not get directory content!");
-                    file_count += file_data.files.len();
-                    total_size += file_data.dir_size;
-                }
-                None => {}
-            }
-        }
-        query_results.push(QueryResult::CamResult(
-            CamResult{
-                camera: format!("{} CAM ({})",num_to_char(camera_iter),camera_iter.to_string()),
-                file_count, total_size,
-            }
-        ));
-    }
-    query_results
-}
-
-pub fn query_by_sound_recorder(config: &Config) -> Vec<QueryResult> {
-    let root_path = &format!("./{}",config.setup.name);
-    let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
-    let mut query_results = Vec::new();
-    for sound_iter in 1..config.setup.sound_sources + 1 {
-        let mut file_count: usize = 0;
-        let mut total_size: u64 = 0;
-        for file in &mut all_files.directories {
-            let padded_number = format!("{:0>2}", sound_iter);
-            let mut file_name_percent = file.clone();
-            file_name_percent.push('%');
-            // Push % to file name to see if the string is at the end of the directory
-            match &file_name_percent.find(&format!("{x}_{y}_REC%", x = padded_number, y = num_to_char(sound_iter).to_string())) {
-                Some(_) => {
-                    let file_data = get_dir_content(file).expect("Could not get directory content!");
-                    file_count += file_data.files.len();
-                    total_size += file_data.dir_size;
-                }
-                None => {}
-            }
-        }
-        query_results.push(QueryResult::SoundResult(
-            SoundResult{
-                sound_recorder: format!("{} REC ({})",num_to_char(sound_iter),sound_iter.to_string()),
-                file_count, total_size,
-            }
-        ));
-    }
-    query_results
 }
 
 // if multiple folders share the same name, each will be printed individually.
@@ -243,7 +275,7 @@ pub fn query_folders(folders : Vec<String>, config: Config, settings: QuerySetti
                         FolderResult{
                             path: file.replace("\\", "/"),
                             file_count: file_data.files.len(), 
-                            total_size: file_data.dir_size,
+                            total_size: to_shorthand(file_data.dir_size),
                         }
                     ));
                 }
@@ -251,24 +283,83 @@ pub fn query_folders(folders : Vec<String>, config: Config, settings: QuerySetti
             }
         }
     }
-    write_query_results(query_results, settings);
+    write_query_results(query_results, settings, Query::Folder(Vec::new()));
 }
 
-pub fn write_query_results(query_results: Vec<QueryResult>, settings: QuerySettings) {
+pub fn write_query_results(query_results: Vec<QueryResult>, settings: QuerySettings, query_type: Query) {
     let mut full_text = String::from("");
     for query_result in query_results {
         let text = query_result.get_result_string();
         full_text.push_str(&format!("{}\n",text));
     }
+    let timestamp: String;
+    let partial_explanation_string: &str;
     let system_time = SystemTime::now();
     let datetime: DateTime<Utc> = system_time.into();
+    if Query::Partial(Vec::new()) == query_type {
+        partial_explanation_string = (if settings.unique_entries{
+            "unique_entries = true # Entries from different days will be displayed separately.\n\n"
+        } else {
+            "unique_entries = false # Entries from different days will be combined.\n\n"
+        });
+    } else{
+        partial_explanation_string = "";
+    }
     if settings.record_timestamp{
-        let prepend = datetime.format("%d/%m/%Y %T").to_string() + "\n\n";
-        full_text.insert_str(0,&prepend);
+        timestamp = datetime.format("%d/%m/%Y %T").to_string() + 
+        "\n" + 
+        if partial_explanation_string == "" {"\n"} else {""};
+    } else {
+        timestamp = String::from("");
     }
     let export_path = match settings.output_name{
         Some(path) => path + ".txt",
-        None => String::from(format!("Query_{}.txt", datetime.format("%d/%m/%Y %T"))),
+        None => String::from(format!("Query_{}.txt", datetime.format("%d.%m.%Y_%T").to_string().replace(":", "."))),
     };
-    std::fs::write(export_path, full_text).expect("Failed to write query result!");
+
+    println!("{}{}", partial_explanation_string, full_text);
+
+    if settings.write {
+        if !std::fs::exists(&export_path).expect("Can't check existence of file does_not_exist.txt"){
+            std::fs::write(export_path, format!("{}{}{}", timestamp, partial_explanation_string, full_text)).expect("Failed to write query result!");
+        } else {
+            println!("A file with that name already exists! Overwrite? (Y/N)");
+            let mut response = String::new();
+            io::stdin().read_line(&mut response).expect("Failed to read line");
+            if response.trim() == "Y" || response.trim() == "y" {
+                std::fs::write(export_path, format!("{}{}{}", timestamp, partial_explanation_string, full_text)).expect("Failed to write query result!");
+                println!("Overwrote existing file.");
+            } else {
+                println!("Did not overwrite existing file.");
+            }
+        }
+    }
+}
+
+pub fn to_shorthand(bytes: u64) -> String {
+    let mut current_number: f64 = bytes as f64;
+    let mut expo_10: u32 = 0;
+    while current_number > 1048576f64 || (expo_10 == 0 && current_number > 1024f64) {
+        current_number /= 1024f64;
+        expo_10 += 3;
+    };
+    let p: &str = match expo_10 {
+        0 => "",
+        3 => "K",
+        6 => "M",
+        9 => "G",
+        12 => "T",
+        15 => "P",
+        18 => "E",
+        21 => "Z",
+        24 => "Y",
+        _ => panic!("Not a valid exponent!"),
+    };
+    let ib = current_number;
+    let b:f64 = bytes as f64 / (10u64.pow(expo_10)) as f64;
+    if expo_10 == 0 {
+        String::from(format!("{b:.0}B"))
+    } else {
+        String::from(format!("{ib:.0}{p}iB ({b:.0}{p}B)"))
+    }
 }

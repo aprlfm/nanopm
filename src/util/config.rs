@@ -1,6 +1,5 @@
 use config::{Config as ConfigLoader, File, FileFormat};
 use serde::{Deserialize, Serialize};
-use std::clone;
 use std::usize;
 use std::fmt;
 use toml;
@@ -285,7 +284,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
         args_to_process -= 1;
     }
 
-    if next_query_param != QueryParams::None && op_type == &OperationType::Query {
+    if next_query_param != QueryParams::None && op_type == &OperationType::Query && next_query_param != QueryParams::OutputDir {
         panic!("Parameter \"{}\" accepts values of {}!", args[arg_index], init::get_required_type_query(next_query_param, true));
     }
     if query == Query::None && op_type == &OperationType::Query {

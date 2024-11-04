@@ -2,7 +2,7 @@ mod util;
 
 extern crate walkdir;
 use walkdir::WalkDir;
-use std::{env, fs, path::Path, process};
+use std::{env, fs, path::Path, process, io};
 use util::{config::{self, Config, ConfigError, ParsedReturn, Query, QueryInfo}, init::{self, InitParams, OperationType, ProjectSetup}};
 use util::query;
 use crate::query::query;
@@ -11,7 +11,6 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let mut config : Config;
     config = Config::new_config();
-    let mut query_to_ask = Query::None;
     let mut query_info_to_pass = QueryInfo::new_query_info();
     let old_config : Option<Config> = if Path::new("config.toml").exists() {
         let config_result = Config::read_config("config.toml");
@@ -63,6 +62,10 @@ fn main() {
     } else{
         query(query_info_to_pass, config);
     }
+
+    println!("\nPress ENTER to continue...");
+    io::stdin().read_line(&mut String::new()).unwrap();
+    process::exit(0);
 }
 
 fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationType){
