@@ -398,7 +398,7 @@ pub fn write_query_results(query_results: Vec<QueryResult>, settings: QuerySetti
         None => String::from(format!("Query_{}.txt", datetime.format("%d.%m.%Y_%T").to_string().replace(":", "."))),
     };
 
-    println!("{}{}", explanation_string, full_text);
+    println!("\n{}{}", explanation_string, full_text);
 
     if settings.write {
         if !std::fs::exists(&export_path).expect("Can't check existence of file does_not_exist.txt"){

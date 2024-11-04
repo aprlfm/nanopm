@@ -19,6 +19,7 @@ pub enum QueryParams {
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum OperationType {
+    None,
     New,
     Update,
     Query,

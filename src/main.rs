@@ -2,7 +2,7 @@ mod util;
 
 extern crate walkdir;
 use walkdir::WalkDir;
-use std::{env, fs, path::Path, process, io};
+use std::{env, fs, path::Path, process};
 use util::{config::{self, Config, ConfigError, ParsedReturn, Query, QueryInfo}, init::{self, InitParams, OperationType, ProjectSetup}};
 use util::query;
 use crate::query::query;
@@ -28,32 +28,33 @@ fn main() {
     let operation_type;
 
     if &args.len() == &1usize {
-        println!("TODO: Help DOCUMENTATION");
-            process::exit(0);
+        help();
     }
 
     let parsed_return = match &args[1][..] {
-        "new" => {
+        "n" | "new" => {
             operation_type = OperationType::New;
             config::parse_args(args, false, &operation_type)
         },
-        "update" => {
+        "u" | "update" => {
             operation_type = OperationType::Update;
             config::parse_args(args, true, &operation_type)
         },
-        "query" => {
+        "q" | "query" => {
             operation_type = OperationType::Query;
             config::parse_args(args, true, &operation_type)
         },
         _ => {
-            println!("TODO: Help DOCUMENTATION");
-            process::exit(0);
+            help();
+            operation_type = OperationType::None;
+            ParsedReturn::None
         },
     };
 
     match parsed_return {
         ParsedReturn::Config(returned_config) => {config = returned_config},
         ParsedReturn::Query(returned_query) => {query_info_to_pass = returned_query},
+        ParsedReturn::None => {}, // Inaccessible
     }
     
     // dbg!(&config);
@@ -63,9 +64,7 @@ fn main() {
         query(query_info_to_pass, config);
     }
 
-    println!("\nPress ENTER to continue...");
-    io::stdin().read_line(&mut String::new()).unwrap();
-    process::exit(0);
+    finish();
 }
 
 fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationType){
@@ -236,7 +235,6 @@ fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationTy
                         }
 
                     }
-                    dbg!("{}", empty_directory);
                 }
             }
         }
@@ -274,4 +272,72 @@ fn num_to_char(num: usize) -> char {
         let char: char = '_';
         char
     }
+}
+
+fn help() {
+    println!("
+nanopm v(0.1.0) || https://nanomotions.org || https://github.com/kaweepatinn1/nanopm
+
+Usage: nanopm [OPERATION] [ARGUMENTS]
+
+Operations: 
+      
+    new, n      | Initialize a new project in the current directory, creating a new config file from 
+                  provided arguments, using defaults where missing.
+    update, u   | Update the current config file based on provided arguments. Project Manager must already 
+                  have been initialized.
+    query, q    | Query the current project based on provided arguments. Project Manager must already have 
+                  been initialized.
+
+Arguments: 
+          
+    CONFIG ARGS | Works with either new/update operations:
+    
+        -n, --name <String>             | Names the project and its directory. When used with update, uses 
+                                          the old config file to rename the old directory to the new name.
+        -dn, --deadname <String>        | Looks for a directory with this name, updating it with the new 
+                                          name provided (or default), making it the main project directory.
+        -d, --days <Integer>            | Sets the amount of footage days the project should account for.
+        -c, --cameras <Integer>         | Sets the amount of cameras the project should account for.
+        -s, --sound-sources <Integer>   | Sets the amount of sound sources the project should account for.
+        -cl, --clean                    | Cleans the project folder after initializing, deleting all empty 
+                                          folders not defined by the program.
+
+    QUERY ARGS | You can use ONE type of query at a time. Works with query operations only:
+       
+        GENERAL QUERY:
+
+            -g, --general               | Creates a general query of various important project folders. 
+                                          Can return sorted by size.
+                -ss, --sort-size        | Sorts general query by size. Must be used after a general query.
+                -sd, --sort-default     | Sorts general query by... its default order... Kind of redundant. 
+                                          Must be used after a general query.
+    
+        PARTIAL QUERY:
+    
+            -r, --root                  | Queries the full project directory, as well as returning project 
+                                          config values.
+            -d, --day                   | Queries each day in RUSHES.
+            -c, --camer                 | Queries each camera. Combines all days into one entry for each 
+                                          camera, displays each day separately if --unique is used.
+            -s, --sound-source          | Queries each sound source. Combines all days into one entry for 
+                                          each source, displays each day separately if --unique is used.
+                -u, --unique            | Stops nanopm from combining all days into one entry for --camera 
+                                          and --sound-source. Unique folders are queried individually.
+    
+        FOLDER QUERY: 
+    
+            -f, --folder <String>       | Queries all folders with the name of the string. Can chain 
+                                          multiple --folder calls to query multiple folder names at once.
+    
+        UNIVERSAL QUERY ARGS:
+        -w, --write <String>            | Writes query result to file with the specified string path. 
+                                          Uses timestamp for path instead if last parameter.
+        -t, --timestamp                 | Adds a timestamp to the top of the query file, if written. 
+                                          Does nothing if write is not specified. Sick!");
+    finish();
+}
+
+fn finish() {
+    process::exit(0);
 }

@@ -24,6 +24,7 @@ pub struct FileStructure {
 }
 
 pub enum ParsedReturn {
+    None,
     Config(Config),
     Query(QueryInfo),
 }
@@ -202,7 +203,9 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
         project = match project_result {
             Ok(config) => {structure = config.file_structure; config.setup},
             Err(error) => {
-                eprintln!("Line {}: Problem opening the file: {}", line!(),error);
+                eprintln!("Line {}: Problem opening the file: {}
+                \nIf the file was not found, consider reinitializing the project with nanopm new (optionally add the argument -dn to consider an existing directory as the project directory).
+                ", line!(),error);
                 std::process::exit(2);
             },
         };
@@ -271,7 +274,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                     if query == Query::General(SortType::any()){
                         query = Query::General(SortType::BySize);
                     } else{
-                        panic!("Cannot have more than one query type!");
+                        panic!("Query type must be \"general\"! If already using a general query, place this argument after -g/--general.");
                     }
                 },
                 "-sd" | "--sort-default" => {
@@ -279,7 +282,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                         dbg!(query);
                         query = Query::General(SortType::ByDefaultOrder);
                     } else{
-                        panic!("Cannot have more than one query type!");
+                        panic!("Query type must be \"general\"! If already using a general query, place this argument after -g/--general.");
                     }
                 },
                 "-r" | "--root" => {
@@ -298,7 +301,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "-c" | "--cam" => {
+                "-c" | "--camera" => {
                     if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
                         queries_to_run.push(QueryType::Cams);
                         query = Query::Partial(queries_to_run.clone());
@@ -306,7 +309,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "-s" | "--sound" => {
+                "-s" | "--sound-source" => {
                     if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
                         queries_to_run.push(QueryType::Sound);
                         query = Query::Partial(queries_to_run.clone());
