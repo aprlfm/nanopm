@@ -48,7 +48,7 @@ Arguments:
             -r, --root                  | Queries the full project directory, as well as returning project 
                                           config values.
             -d, --day                   | Queries each day in RUSHES.
-            -c, --camer                 | Queries each camera. Combines all days into one entry for each 
+            -c, --camera                | Queries each camera. Combines all days into one entry for each 
                                           camera, displays each day separately if --unique is used.
             -s, --sound-source          | Queries each sound source. Combines all days into one entry for 
                                           each source, displays each day separately if --unique is used.
