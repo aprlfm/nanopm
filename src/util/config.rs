@@ -261,9 +261,9 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                 "-d" | "--days" => next_init_param = InitParams::Days,
                 "-c" | "--cameras" => next_init_param = InitParams::Cameras,
                 "-s" | "--sound-sources" => next_init_param = InitParams::SoundSources,
-                "-cl" | "--clean" => project.clean_project = {
+                "-cl" | "--clean" => {
                     println!("Cleaning empty folders that are undefined!");
-                    true
+                    project.clean_project = true;
                 },
                 other => panic!("Error in parsing: \"{other}\" is not a valid CLI argument!"),
             }
