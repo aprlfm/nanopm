@@ -346,7 +346,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "-d" | "--day" => {
+                "-d" | "--days" => {
                     if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
                         queries_to_run.push(QueryType::Days);
                         query = Query::Partial(queries_to_run.clone());
@@ -354,7 +354,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "-c" | "--camera" => {
+                "-c" | "--cameras" => {
                     if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
                         queries_to_run.push(QueryType::Cams);
                         query = Query::Partial(queries_to_run.clone());
@@ -362,7 +362,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                         panic!("Cannot have more than one query type!");
                     }
                 },
-                "-s" | "--sound-source" => {
+                "-s" | "--sound-sources" => {
                     if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
                         queries_to_run.push(QueryType::Sound);
                         query = Query::Partial(queries_to_run.clone());

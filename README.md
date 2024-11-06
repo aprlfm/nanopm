@@ -47,10 +47,10 @@ Arguments:
     
             -r, --root                  | Queries the full project directory, as well as returning project 
                                           config values.
-            -d, --day                   | Queries each day in RUSHES.
-            -c, --camera                | Queries each camera. Combines all days into one entry for each 
+            -d, --days                   | Queries each day in RUSHES.
+            -c, --cameras                | Queries each camera. Combines all days into one entry for each 
                                           camera, displays each day separately if --unique is used.
-            -s, --sound-source          | Queries each sound source. Combines all days into one entry for 
+            -s, --sound-sources          | Queries each sound source. Combines all days into one entry for 
                                           each source, displays each day separately if --unique is used.
                 -u, --unique            | Stops nanopm from combining all days into one entry for --camera 
                                           and --sound-source. Unique folders are queried individually.
