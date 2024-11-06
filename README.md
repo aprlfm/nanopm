@@ -68,7 +68,7 @@ Arguments:
 
 ## build instructions
 since i currently dont have access to mac/linu you'll have to build this yourself if you use either of those os' :<
-guide is extremely beginner friendly because uhh not every film/media nerd is also a computer nerd
+<br>guide will be quite beginner friendly because not every film/media nerd is also a computer nerd
 
 #### step 1: rust UP!!!
 install rust!! i recommend [rustup](https://rustup.rs/) it is very cool and awesome it helped me install rust very easily. just follow the steps provided and you'll be okay :)
