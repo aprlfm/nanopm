@@ -112,11 +112,11 @@ pub struct FolderResult{
     total_size : String,
 }
 
-pub fn query(query: QueryInfo, config: Config) {
+pub fn query(query: QueryInfo) {
     match query.query {
-        Query::General(sort_type) => {query_general(sort_type, config, query.settings);},
-        Query::Partial(types) => {query_partial(types, config, query.settings);},
-        Query::Folder(folders) => {query_folders(folders, config, query.settings);},
+        Query::General(sort_type) => {query_general(sort_type, query.config, query.settings);},
+        Query::Partial(types) => {query_partial(types, query.config, query.settings);},
+        Query::Folder(folders) => {query_folders(folders, query.config, query.settings);},
         Query::None => {}, // Unreachable
     }
 }
@@ -136,6 +136,7 @@ pub fn query_partial(types_to_query: Vec<QueryType>, config: Config, settings: Q
 pub fn query_general(sort_type: SortType, config: Config, settings: QuerySettings) {
     let folders: &Vec<String> = &config.general_query_params;
     let root_path = &format!("./{}",config.setup.name);
+    // dbg!(&config);
     let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
     let mut query_results = Vec::new();
     for folder in folders {

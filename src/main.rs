@@ -62,7 +62,7 @@ fn main() {
     if operation_type != OperationType::Query{
         setup(old_config, config, operation_type);
     } else{
-        query(query_info_to_pass, config);
+        query(query_info_to_pass);
     }
 
     finish();

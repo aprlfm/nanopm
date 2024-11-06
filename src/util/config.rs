@@ -33,6 +33,7 @@ pub enum ParsedReturn {
 pub struct QueryInfo{
     pub query: Query, 
     pub settings: QuerySettings,
+    pub config: Config,
 }
 
 impl QueryInfo{
@@ -40,6 +41,7 @@ impl QueryInfo{
         QueryInfo{
             query: Query::None,
             settings: QuerySettings::default(),
+            config: Config::new_config(),
         }
     }
 } 
@@ -413,7 +415,13 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
         ParsedReturn::Query(
             QueryInfo{
                 query: query, 
-                settings: query_settings
+                settings: query_settings,
+                config: Config{
+                    version : get_version(),
+                    setup : project,
+                    file_structure : structure,
+                    general_query_params : general_query_params,
+                },
             })
     }
 }
