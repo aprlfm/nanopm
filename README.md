@@ -7,18 +7,18 @@ download the installer from releases and run it. that's it! you can now start us
 
 ## usage
 Usage:
-    
-    nanopm [OPERATION] [ARGUMENTS]
 
+    nanopm [OPERATION] [ARGUMENTS]
+-----------------------------------------------------------------------------------------------------------------
 Operations: 
-      
+
     new, n      | Initialize a new project in the current directory, creating a new config file from 
                   provided arguments, using defaults where missing.
     update, u   | Update the current config file based on provided arguments. Project Manager must already 
                   have been initialized.
     query, q    | Query the current project based on provided arguments. Project Manager must already have 
                   been initialized.
-
+-----------------------------------------------------------------------------------------------------------------
 Arguments: 
           
     CONFIG ARGS | Works with either new/update operations:

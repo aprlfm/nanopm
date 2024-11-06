@@ -290,20 +290,20 @@ fn num_to_char(num: usize) -> char {
 fn help() {
     println!("
 nano project manager v(0.1.0) || https://nanomotions.org/scripts/nanopm || https://github.com/kaweepatinn1/nanopm
-
-Usage: nanopm [OPERATION] [ARGUMENTS]
-
+-----------------------------------------------------------------------------------------------------------------
+Usage:
+    nanopm [OPERATION] [ARGUMENTS]
+-----------------------------------------------------------------------------------------------------------------
 Operations: 
-      
     new, n      | Initialize a new project in the current directory, creating a new config file from 
                   provided arguments, using defaults where missing.
     update, u   | Update the current config file based on provided arguments. Project Manager must already 
                   have been initialized.
     query, q    | Query the current project based on provided arguments. Project Manager must already have 
                   been initialized.
-
+-----------------------------------------------------------------------------------------------------------------
 Arguments: 
-          
+-----------------------------------------------------------------------------------------------------------------
     CONFIG ARGS | Works with either new/update operations:
     
         -n, --name <String>             | Names the project and its directory. When used with update, uses 
@@ -315,7 +315,7 @@ Arguments:
         -s, --sound-sources <Integer>   | Sets the amount of sound sources the project should account for.
         -cl, --clean                    | Cleans the project folder after initializing, deleting all empty 
                                           folders not defined by the program.
-
+-----------------------------------------------------------------------------------------------------------------
     QUERY ARGS | You can use ONE type of query at a time. Works with query operations only:
        
         GENERAL QUERY:
@@ -330,13 +330,13 @@ Arguments:
     
             -r, --root                  | Queries the full project directory, as well as returning project 
                                           config values.
-            -d, --day                   | Queries each day in RUSHES.
-            -c, --camera                | Queries each camera. Combines all days into one entry for each 
+            -d, --days                  | Queries each day in RUSHES.
+            -c, --cameras               | Queries each camera. Combines all days into one entry for each 
                                           camera, displays each day separately if --unique is used.
-            -s, --sound-source          | Queries each sound source. Combines all days into one entry for 
+            -s, --sound-sources         | Queries each sound source. Combines all days into one entry for 
                                           each source, displays each day separately if --unique is used.
-                -u, --unique            | Stops nanopm from combining all days into one entry for --camera 
-                                          and --sound-source. Unique folders are queried individually.
+            -u, --unique                | Stops nanopm from combining all days into one entry for --cameras 
+                                          and --sound-sources. Unique folders are queried individually.
     
         FOLDER QUERY: 
     
