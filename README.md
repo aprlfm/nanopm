@@ -1,7 +1,7 @@
 # nano project manager 
 a simple and small CLI for managing media projects of any size!
 ## cool and epic icon !!!!
-![alt text](https://github.com/kaweepatinn1/nanopm/blob/main/assets/icon_64x64.png?raw=true)
+![epic nanopm logo](https://github.com/kaweepatinn1/nanopm/blob/main/assets/icon_64x64.png?raw=true)
 ## installation
 download the installer from releases and run it. that's it! you can now start using nanopm :)
 
