@@ -74,7 +74,7 @@ since i currently dont have access to mac/linu you'll have to build this yoursel
 install rust!! i recommend [rustup](https://rustup.rs/) it is very cool and awesome it helped me install rust very easily. just follow the steps provided and you'll be okay :)
 
 #### step 2: clone this repo
-i am assuming you have git but if not you can get it from [here](https://git-scm.com/downloads).
+download and install [git](https://git-scm.com/downloads).
 once you have git, open your console and cd (change directory) into a folder you want to bulid this in. now use the
 
     git clone https://github.com/kaweepatinn1/nanopm
@@ -88,4 +88,4 @@ run
 
 in the same location. <br><br>
 
-thats it! you can now find the .exe file in ./target/debug/nanopm.exe ! you can now find out how to add it to your system yourself because i have no idea how to do that, or just stick with running the .exe through console instead.
+thats it! you can now find the .exe file in ./target/debug/nanopm.exe ! next step is possibly finding out how to add it to your system yourself because i have no idea how to do that on other operating systems, or just stick with running the .exe through console instead.
