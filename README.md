@@ -64,7 +64,8 @@ Arguments:
         -w, --write <String>            | Writes query result to file with the specified string path. 
                                           Uses timestamp for path instead if last parameter.
         -t, --timestamp                 | Adds a timestamp to the top of the query file, if written. 
-                                          Does nothing if write is not specified. Sick!"
+                                          Does nothing if write is not specified. Sick!
+        -q, --quiet                     | Does not log missing folder errors into the console.
 
 ## build instructions
 since i currently dont have access to mac/linu you'll have to build this yourself if you use either of those os' :<

@@ -140,15 +140,18 @@ pub fn query_general(sort_type: SortType, config: Config, settings: QuerySetting
     let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
     let mut query_results = Vec::new();
     for folder in folders {
+        let file_to_query = folder;
+        let mut found_file = false;
         for file in &mut all_files.directories {
             let mut file_name_percent = file.clone();
             file_name_percent.push('%');
             // Push % to file name to see if the string is at the end of the directory
             // dbg!(&format!("{}%", &folder));
             // dbg!(&file_name_percent);
-            match &file_name_percent.find(&format!("{}%", &folder)) {
+            match &file_name_percent.find(&format!("{}%", &file_to_query)) {
                 Some(_) => {
                     let file_data = get_dir_content(&file).expect("Could not get directory content!");
+                    found_file = true;
                     query_results.push(QueryResult::GeneralResult(
                         GeneralResult{
                             path: file.replace("\\", "/"),
@@ -160,6 +163,11 @@ pub fn query_general(sort_type: SortType, config: Config, settings: QuerySetting
                     ));
                 }
                 None => {}
+            }
+        }
+        if !found_file{
+            if !settings.quiet {
+                println!("The non-existent folder \"{}\" was omitted from the query!", file_to_query);
             }
         }
     }
@@ -187,28 +195,30 @@ pub fn query_iterable(config: &Config, settings: &QuerySettings, query: QueryTyp
     let query_specific_params: (usize, String);
         match query {
             QueryType::Days => {
-                query_specific_params = (config.setup.days, String::from("[Iter]_DAY[Iter]%"));
+                query_specific_params = (config.setup.days, String::from("[Iter]_DAY[Iter]"));
             },
             QueryType::Cams => {
-                query_specific_params = (config.setup.cameras, String::from("[Iter]_[Char]_CAM%"));
+                query_specific_params = (config.setup.cameras, String::from("[Iter]_[Char]_CAM"));
             },
             QueryType::Sound => {
-                query_specific_params = (config.setup.sound_sources, String::from("[Iter]_[Char]_REC%"));
+                query_specific_params = (config.setup.sound_sources, String::from("[Iter]_[Char]_REC"));
             },
             QueryType::Root => {panic!("This should be inaccessible!")}, // Inaccessible
         }
     if settings.unique_entries {
         for iter in 1..query_specific_params.0 + 1 {
+            let file_to_query = &query_specific_params.1
+            .replace("[Iter]", &format!("{:0>2}", iter))
+            .replace("[Char]", &num_to_char(iter).to_string());
+            let mut found_file = false;
             for file in &mut all_files.directories {
                 let mut file_name_percent = file.clone();
                 file_name_percent.push('%');
                 // Push % to file name to see if the string is at the end of the directory
-                match &file_name_percent.find(&query_specific_params.1
-                    .replace("[Iter]", &format!("{:0>2}", iter))
-                    .replace("[Char]", &num_to_char(iter).to_string())) {
+                match &file_name_percent.find(&format!("{}%", &file_to_query)) {
                     Some(_) => {
                         let file_data = get_dir_content(&file).expect("Could not get directory content!");
-                        
+                        found_file = true;
                         query_results.push(match query {
                             QueryType::Days => {
                                 QueryResult::DayResult(
@@ -243,19 +253,27 @@ pub fn query_iterable(config: &Config, settings: &QuerySettings, query: QueryTyp
                     None => {}
                 }
             }
+            if !found_file{
+                if !settings.quiet {
+                    println!("The non-existent folder \"{}\" was omitted from the query!", file_to_query);
+                }
+            }
         }
     } else {
         for iter in 1..query_specific_params.0 + 1 {
+            let file_to_query = &query_specific_params.1
+            .replace("[Iter]", &format!("{:0>2}", iter))
+            .replace("[Char]", &num_to_char(iter).to_string());
+            let mut found_file = false;
             let mut file_count: usize = 0;
             let mut total_size: u64 = 0;
             for file in &mut all_files.directories {
                 let mut file_name_percent = file.clone();
                 file_name_percent.push('%');
                 // Push % to file name to see if the string is at the end of the directory
-                match &file_name_percent.find(&query_specific_params.1
-                    .replace("[Iter]", &format!("{:0>2}", iter))
-                    .replace("[Char]", &num_to_char(iter).to_string())) {
+                match &file_name_percent.find(&format!("{}%", &file_to_query)) {
                     Some(_) => {
+                        found_file = true;
                         let file_data = get_dir_content(&file).expect("Could not get directory content!");
                         file_count += file_data.files.len();
                         total_size += file_data.dir_size;
@@ -263,36 +281,42 @@ pub fn query_iterable(config: &Config, settings: &QuerySettings, query: QueryTyp
                     None => {}
                 }
             }
-            query_results.push(match query {
-                QueryType::Days => {
-                    QueryResult::DayResult(
-                        DayResult{
-                            path: None,
-                            day: String::from("Day ") + &iter.to_string(),
-                            file_count, 
-                            total_size: to_shorthand(total_size),
-                        }
-                )},
-                QueryType::Cams => {
-                    QueryResult::CamResult(
-                        CamResult{
-                            path: None,
-                            camera: format!("{} Cam ({})",num_to_char(iter),iter.to_string()),
-                            file_count, 
-                            total_size: to_shorthand(total_size),
-                        }
-                )},
-                QueryType::Sound => {
-                    QueryResult::SoundResult(
-                        SoundResult{
-                            path: None,
-                            sound_source: format!("{} Rec ({})",num_to_char(iter),iter.to_string()),
-                            file_count, 
-                            total_size: to_shorthand(total_size),
-                        }
-                )},
-                QueryType::Root => {panic!("This should be inaccessible!")} // Inaccessible
-            })
+            if found_file {
+                query_results.push(match query {
+                    QueryType::Days => {
+                        QueryResult::DayResult(
+                            DayResult{
+                                path: None,
+                                day: String::from("Day ") + &iter.to_string(),
+                                file_count, 
+                                total_size: to_shorthand(total_size),
+                            }
+                    )},
+                    QueryType::Cams => {
+                        QueryResult::CamResult(
+                            CamResult{
+                                path: None,
+                                camera: format!("{} Cam ({})",num_to_char(iter),iter.to_string()),
+                                file_count, 
+                                total_size: to_shorthand(total_size),
+                            }
+                    )},
+                    QueryType::Sound => {
+                        QueryResult::SoundResult(
+                            SoundResult{
+                                path: None,
+                                sound_source: format!("{} Rec ({})",num_to_char(iter),iter.to_string()),
+                                file_count, 
+                                total_size: to_shorthand(total_size),
+                            }
+                    )},
+                    QueryType::Root => {panic!("This should be inaccessible!")} // Inaccessible
+                });
+            } else {
+                if !settings.quiet {
+                    println!("The non-existent folder \"{}\" was omitted from the query!", file_to_query);
+                }
+            }
         }
     };
     query_results
@@ -301,7 +325,7 @@ pub fn query_iterable(config: &Config, settings: &QuerySettings, query: QueryTyp
 
 pub fn query_root(config: &Config) -> QueryResult{
     let root_path = &format!("./{}",config.setup.name);
-    let all_files = get_dir_content(root_path).expect("Could not get directory content!");
+    let all_files = get_dir_content(root_path).expect(&format!("Could not find the base directory at \"{}\"!", root_path));
     QueryResult::RootResult( 
         RootResult{
             project_name: config.setup.name.to_string(),
@@ -320,15 +344,18 @@ pub fn query_folders(folders : Vec<String>, config: Config, settings: QuerySetti
     let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
     let mut query_results = Vec::new();
     for folder in folders {
+        let file_to_query = folder;
+            let mut found_file = false;
         for file in &mut all_files.directories {
             let mut file_name_percent = file.clone();
             file_name_percent.push('%');
             // Push % to file name to see if the string is at the end of the directory
             // dbg!(&format!("{}%", &folder));
             // dbg!(&file_name_percent);
-            match &file_name_percent.find(&format!("{}%", &folder)) {
+            match &file_name_percent.find(&format!("{}%", &file_to_query)) {
                 Some(_) => {
                     let file_data = get_dir_content(&file).expect("Could not get directory content!");
+                    found_file = true;
                     query_results.push(QueryResult::FolderResult(
                         FolderResult{
                             path: file.replace("\\", "/"),
@@ -338,6 +365,11 @@ pub fn query_folders(folders : Vec<String>, config: Config, settings: QuerySetti
                     ));
                 }
                 None => {}
+            }
+        }
+        if !found_file{
+            if !settings.quiet {
+                println!("The non-existent folder \"{}\" was omitted from the query!", file_to_query);
             }
         }
     }

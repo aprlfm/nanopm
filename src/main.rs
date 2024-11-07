@@ -355,7 +355,8 @@ Arguments:
         -w, --write <String>            | Writes query result to file with the specified string path. 
                                           Uses timestamp for path instead if last parameter.
         -t, --timestamp                 | Adds a timestamp to the top of the query file, if written. 
-                                          Does nothing if write is not specified. Sick!");
+                                          Does nothing if write is not specified. Sick!
+        -q, --quiet                     | Does not log missing folder errors into the console.");                                  
     finish();
 }
 

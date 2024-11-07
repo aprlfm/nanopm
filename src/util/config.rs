@@ -52,6 +52,7 @@ pub struct QuerySettings{
     pub output_name: Option<String>,
     pub record_timestamp: bool,
     pub unique_entries: bool,
+    pub quiet: bool,
 }
 
 impl QuerySettings{
@@ -61,6 +62,7 @@ impl QuerySettings{
             output_name: None,
             record_timestamp: false,
             unique_entries: false,
+            quiet: false,
         }
     }
 }
@@ -318,6 +320,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                 },
                 "-t" | "--timestamp" => query_settings.record_timestamp = true,
                 "-u" | "--unique" => query_settings.unique_entries = true,
+                "-q" | "--quiet" => query_settings.quiet = true,
                 "-g" | "--general" => {
                     if query == Query::None{
                         query = Query::General(SortType::default_sort_type());
