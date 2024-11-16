@@ -70,6 +70,8 @@ Arguments:
                                           Does nothing if write is not specified. Sick!
         -q, --quiet                     | Does not log missing folder errors into the console.
 
+File structure can be changed in config.toml under [[file_structure.folders_list]] tags
+
 ## build instructions
 since i currently dont have access to mac/linu you'll have to build this yourself if you use either of those os' :<
 <br>guide will be quite beginner friendly because not every film/media nerd is also a computer nerd
