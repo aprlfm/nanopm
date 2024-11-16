@@ -62,7 +62,7 @@ pub struct ProjectSetup {
 
 pub fn new_project_setup() -> ProjectSetup{
     ProjectSetup{
-        name : String::from("Untitled"),
+        name : String::from("Untitled_Project"),
         deadname: None,
         days : 2,
         cameras : 2,
