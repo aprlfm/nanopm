@@ -71,8 +71,8 @@ impl QuerySettings{
 pub enum Query{
     None,
     General(SortType),
-    Partial(Vec<QueryType>),
-    Folder(Vec<String>),
+    Partial(Vec<QueryType>, SortType),
+    Folder(Vec<String>, SortType),
 }
 
 impl PartialEq<Self> for Query {
@@ -87,7 +87,17 @@ impl Query {
             Query::General(sort_type) => {
                 sort_type
             },
+            Query::Partial(_, sort_type, ) => {
+                sort_type
+            },
+            Query::Folder(_, sort_type, ) => {
+                sort_type
+            },
+            Query::None => {
+                &SortType::ByDefaultOrder
+            },
             _ => {
+                dbg!(&self);
                 panic!("Tried to get sort type of a non general query! (No sort type exists)")
             }
         }
@@ -329,6 +339,21 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                     }
                 },
                 "-ss" | "--sort-size" => {
+                    match query {
+                        Query::General(_) => {
+                            query = Query::General(SortType::BySize);
+                        },
+                        Query::Partial(queries, _) => {
+                            query = Query::Partial(queries, SortType::BySize);
+                        },
+                        Query::Folder(queries, _) => {
+                            query = Query::Folder(queries, SortType::BySize);
+                        },
+                        Query::None => {
+                            panic!("Please specify a type of query before specifying a sort type!");
+                        },
+                        
+                    }
                     if query == Query::General(SortType::any()){
                         query = Query::General(SortType::BySize);
                     } else{
@@ -337,40 +362,39 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                 },
                 "-sd" | "--sort-default" => {
                     if query == Query::General(SortType::any()){
-                        dbg!(query);
                         query = Query::General(SortType::ByDefaultOrder);
                     } else{
                         panic!("Query type must be \"general\"! If already using a general query, place this argument after -g/--general.");
                     }
                 },
                 "-r" | "--root" => {
-                    if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
+                    if query == Query::None || matches!(&query, Query::Partial(a, b)) {
                         queries_to_run.push(QueryType::Root);
-                        query = Query::Partial(queries_to_run.clone());
+                        query = Query::Partial(queries_to_run.clone(), query.get_sort_type().clone());
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
                 "-d" | "--days" => {
-                    if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
+                    if query == Query::None || matches!(&query, Query::Partial(a, b)) {
                         queries_to_run.push(QueryType::Days);
-                        query = Query::Partial(queries_to_run.clone());
+                        query = Query::Partial(queries_to_run.clone(), query.get_sort_type().clone());
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
                 "-c" | "--cameras" => {
-                    if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
+                    if query == Query::None || matches!(&query, Query::Partial(a, b)) {
                         queries_to_run.push(QueryType::Cams);
-                        query = Query::Partial(queries_to_run.clone());
+                        query = Query::Partial(queries_to_run.clone(), query.get_sort_type().clone());
                     } else{
                         panic!("Cannot have more than one query type!");
                     }
                 },
                 "-s" | "--sound-sources" => {
-                    if query == Query::None || query == Query::Partial(queries_to_run.clone()) {
+                    if query == Query::None || matches!(&query, Query::Partial(a, b)) {
                         queries_to_run.push(QueryType::Sound);
-                        query = Query::Partial(queries_to_run.clone());
+                        query = Query::Partial(queries_to_run.clone(), query.get_sort_type().clone());
                     } else {
                         panic!("Cannot have more than one query type!");
                     }
@@ -381,9 +405,9 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
         } else {
             match next_query_param {
                 QueryParams::Folder => {
-                    if query == Query::None || query == Query::Folder(folders_to_search.clone()) {
+                    if query == Query::None || matches!(&query, Query::Folder(a, b)) {
                         folders_to_search.push(String::from(current_arg));
-                        query = Query::Folder(folders_to_search.clone());
+                        query = Query::Folder(folders_to_search.clone(), query.get_sort_type().clone());
                     } else{
                         panic!("Cannot have more than one query type!");
                     }

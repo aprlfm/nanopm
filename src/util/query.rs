@@ -115,13 +115,13 @@ pub struct FolderResult{
 pub fn query(query: QueryInfo) {
     match query.query {
         Query::General(sort_type) => {query_general(sort_type, query.config, query.settings);},
-        Query::Partial(types) => {query_partial(types, query.config, query.settings);},
-        Query::Folder(folders) => {query_folders(folders, query.config, query.settings);},
+        Query::Partial(types, sort_type) => {query_partial(types, sort_type, query.config, query.settings);},
+        Query::Folder(folders, sort_type) => {query_folders(folders, sort_type, query.config, query.settings);},
         Query::None => {}, // Unreachable
     }
 }
 
-pub fn query_partial(types_to_query: Vec<QueryType>, config: Config, settings: QuerySettings) {
+pub fn query_partial(types_to_query: Vec<QueryType>, sort_type: SortType, config: Config, settings: QuerySettings) {
     let mut query_results: Vec<QueryResult> = Vec::new();
     for query in types_to_query {
         let mut new_query_results: Vec<QueryResult> = match query {
@@ -130,7 +130,7 @@ pub fn query_partial(types_to_query: Vec<QueryType>, config: Config, settings: Q
         };
         query_results.append(&mut new_query_results);
     }
-    write_query_results(query_results, settings, Query::Partial(Vec::new()));
+    write_query_results(query_results, settings, Query::Partial(Vec::new(), SortType::None));
 }
 
 pub fn query_general(sort_type: SortType, config: Config, settings: QuerySettings) {
@@ -339,7 +339,7 @@ pub fn query_root(config: &Config) -> QueryResult{
 }
 
 // if multiple folders share the same name, each will be printed individually.
-pub fn query_folders(folders : Vec<String>, config: Config, settings: QuerySettings) {
+pub fn query_folders(folders : Vec<String>, sort_type: SortType, config: Config, settings: QuerySettings) {
     let root_path = &format!("./{}",config.setup.name);
     let mut all_files = get_dir_content(root_path).expect("Could not get directory content!");
     let mut query_results = Vec::new();
@@ -373,7 +373,7 @@ pub fn query_folders(folders : Vec<String>, config: Config, settings: QuerySetti
             }
         }
     }
-    write_query_results(query_results, settings, Query::Folder(Vec::new()));
+    write_query_results(query_results, settings, Query::Folder(Vec::new(), SortType::None));
 }
 
 pub fn write_query_results(query_results: Vec<QueryResult>, settings: QuerySettings, query_type: Query) {
@@ -386,7 +386,7 @@ pub fn write_query_results(query_results: Vec<QueryResult>, settings: QuerySetti
     let explanation_string: &str;
     let system_time = SystemTime::now();
     let datetime: DateTime<Utc> = system_time.into();
-    if query_type == Query::Partial(Vec::new()) {
+    if query_type == Query::Partial(Vec::new(), SortType::ByDefaultOrder) {
         explanation_string = if settings.unique_entries {
             "unique_entries = true # Entries from different days will be displayed separately.\n\n"
         } else {
