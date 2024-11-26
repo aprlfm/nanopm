@@ -96,10 +96,10 @@ impl Query {
             Query::None => {
                 &SortType::ByDefaultOrder
             },
-            _ => {
-                dbg!(&self);
-                panic!("Tried to get sort type of a non general query! (No sort type exists)")
-            }
+            // _ => {
+            //     dbg!(&self);
+            //     panic!("Tried to get sort type of a non general query! (No sort type exists)")
+            // }
         }
     }
 
@@ -368,7 +368,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                     }
                 },
                 "-r" | "--root" => {
-                    if query == Query::None || matches!(&query, Query::Partial(a, b)) {
+                    if query == Query::None || matches!(&query, Query::Partial(_, _)) {
                         queries_to_run.push(QueryType::Root);
                         query = Query::Partial(queries_to_run.clone(), query.get_sort_type().clone());
                     } else{
@@ -376,7 +376,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                     }
                 },
                 "-d" | "--days" => {
-                    if query == Query::None || matches!(&query, Query::Partial(a, b)) {
+                    if query == Query::None || matches!(&query, Query::Partial(_, _)) {
                         queries_to_run.push(QueryType::Days);
                         query = Query::Partial(queries_to_run.clone(), query.get_sort_type().clone());
                     } else{
@@ -384,7 +384,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                     }
                 },
                 "-c" | "--cameras" => {
-                    if query == Query::None || matches!(&query, Query::Partial(a, b)) {
+                    if query == Query::None || matches!(&query, Query::Partial(_, _)) {
                         queries_to_run.push(QueryType::Cams);
                         query = Query::Partial(queries_to_run.clone(), query.get_sort_type().clone());
                     } else{
@@ -392,7 +392,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
                     }
                 },
                 "-s" | "--sound-sources" => {
-                    if query == Query::None || matches!(&query, Query::Partial(a, b)) {
+                    if query == Query::None || matches!(&query, Query::Partial(_, _)) {
                         queries_to_run.push(QueryType::Sound);
                         query = Query::Partial(queries_to_run.clone(), query.get_sort_type().clone());
                     } else {
@@ -405,7 +405,7 @@ pub fn parse_args(args : Vec<String>, load : bool, op_type : &OperationType) -> 
         } else {
             match next_query_param {
                 QueryParams::Folder => {
-                    if query == Query::None || matches!(&query, Query::Folder(a, b)) {
+                    if query == Query::None || matches!(&query, Query::Folder(_, _)) {
                         folders_to_search.push(String::from(current_arg));
                         query = Query::Folder(folders_to_search.clone(), query.get_sort_type().clone());
                     } else{
