@@ -1,24 +1,30 @@
 mod util;
 
 extern crate walkdir;
-use walkdir::WalkDir;
 use std::{env, fs, path::Path, process};
-use util::{config::{self, Config, ConfigError, ParsedReturn, Query, QueryInfo}, init::{self, InitParams, OperationType, ProjectSetup}};
-use util::query;
-use crate::query::query;
+
+use util::{
+    config::{self, Config, ConfigError, ParsedReturn, Query, QueryInfo},
+    init::{self, InitParams, OperationType, ProjectSetup},
+    query,
+};
+use walkdir::WalkDir;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let mut config : Config;
+    let mut config: Config;
     config = Config::new_config();
     let mut query_info_to_pass = QueryInfo::new_query_info();
-    let old_config : Option<Config> = if Path::new("config.toml").exists() {
+
+    let old_config: Option<Config> = if Path::new("config.toml").exists() {
         let config_result = Config::read_config("config.toml");
         let config = match config_result {
             Ok(config) => config,
             Err(error) => {
                 eprintln!("Line {}: Problem opening the file: {}", line!(), error);
-                fs::rename("config.toml", "config_old.toml").map_err(|e| ConfigError::IoError(e)).expect("Could not rename broken config");
+                fs::rename("config.toml", "config_old.toml")
+                    .map_err(|e| ConfigError::IoError(e))
+                    .expect("Could not rename broken config");
                 Config::new_config()
             }
         };
@@ -26,262 +32,255 @@ fn main() {
     } else {
         None
     };
-    let operation_type;
 
-    if &args.len() == &1usize {
+    if args.len() == 1 {
         help();
+        return;
     }
 
-    let parsed_return = match &args[1][..] {
-        "n" | "new" => {
-            operation_type = OperationType::New;
-            config::parse_args(args, false, &operation_type)
-        },
-        "u" | "update" => {
-            operation_type = OperationType::Update;
-            config::parse_args(args, true, &operation_type)
-        },
-        "q" | "query" => {
-            operation_type = OperationType::Query;
-            config::parse_args(args, true, &operation_type)
-        },
+    let operation_type = match &args[1][..] {
+        "n" | "new" => OperationType::New,
+        "u" | "update" => OperationType::Update,
+        "q" | "query" => OperationType::Query,
         _ => {
             help();
-            operation_type = OperationType::None;
-            ParsedReturn::None
-        },
+            return;
+        }
     };
 
+    let parsed_return =
+        config::parse_args(args, operation_type != OperationType::New, &operation_type);
+
     match parsed_return {
-        ParsedReturn::Config(returned_config) => {config = returned_config},
-        ParsedReturn::Query(returned_query) => {query_info_to_pass = returned_query},
-        ParsedReturn::None => {}, // Inaccessible
+        ParsedReturn::Config(returned_config) => config = returned_config,
+        ParsedReturn::Query(returned_query) => query_info_to_pass = returned_query,
+        ParsedReturn::None => {}
     }
-    
-    // dbg!(&config);
-    if operation_type != OperationType::Query{
-        setup(old_config, config, operation_type);
-    } else{
-        query(query_info_to_pass);
+
+    if operation_type != OperationType::Query {
+        if let Err(e) = setup(old_config, config, operation_type) {
+            eprintln!("Setup failed: {}", e);
+            process::exit(3);
+        }
+    } else {
+        if let Err(e) = query::query(query_info_to_pass) {
+            eprintln!("Query failed: {}", e);
+            process::exit(4);
+        }
     }
 
     finish();
 }
 
-fn setup(old_config_option: Option<Config>, config: Config, op_type: OperationType){
+fn setup(
+    old_config_option: Option<Config>,
+    config: Config,
+    op_type: OperationType,
+) -> Result<(), ConfigError> {
     let mut old_config = Config::new_config();
-    let mut old_config_exists = false;
-    match old_config_option {
-        Some(config) => {old_config = config; old_config_exists = true},
-        None => {},
+    let old_config_exists = if let Some(cfg) = old_config_option {
+        old_config = cfg;
+        true
+    } else {
+        false
     };
+
+    config.validate()?;
 
     let old_setup = &old_config.setup;
     let setup = &config.setup;
 
-    {
-        let main_folder_result : std::result::Result<(), ConfigError> = match &setup.deadname {
-            Some(deadname) => initialize_main_folder_deadname(&deadname, &setup),
-            None => initialize_main_folder(&old_setup, &setup, &op_type, old_config_exists),
-        };
-
-        match main_folder_result {
-            Ok(()) => {
-                old_config.setup.name = setup.name.clone();
-                // Regardless of whether old config exists or not (if it didn't it would get default values), edit the name attribute and then write the config to file.
-                // UPDATE NAME VALUE IN CONFIG
-                let write_config_result = Config::write_config(&old_config, "config.toml");
-                match write_config_result {
-                    Ok(file) => file,
-                    Err(error) => {
-                        eprintln!("Line {}: Problem opening the file: {}", line!(), error);
-                    },
-                };
-            },
-            Err(error) => {
-                eprintln!("Line {}: Problem creating/editing files: {}", line!(), error);
-                std::process::exit(3);
-            },
-        };
-    }
-    
-    let mut paths: Vec<String> = Vec::new();
-    
-    {
-        paths.push("/".to_string());
-        for v in &config.file_structure.folders_list {
-            let mut paths_to_append: Vec<String> = Vec::new();
-            let next_path = String::from("/");
-            paths_to_append.push(next_path);
-            let mut current_parent_folder = v;
-            let mut iterations = 0;
-            let max_iterations = 100;
-            // MAX ITERATIONS set to 100 (can be changed)
-            while current_parent_folder.parent != 0 && iterations < max_iterations {
-                // println!("{x}", x = current_parent_folder.name);
-                // println!("{x}", x = current_parent_folder.parent);
-                match current_parent_folder.name.as_str() {
-                    "%days" => {
-                        let mut new_paths_vector: Vec<String> = Vec::new();
-                        for i in 1..setup.days + 1 {
-                            let padded_number = format!("{:0>2}", i);
-                            let folder_name = format!("/{}_DAY{}", padded_number, padded_number);
-                            for path in &mut paths_to_append {
-                                let mut new_path = path.clone();
-                                new_path.insert_str(0, &folder_name);
-                                new_paths_vector.push(new_path);
-                            }
-                        }
-                        paths_to_append = new_paths_vector;
-                    },
-                    "%cams" => {
-                        let mut new_paths_vector: Vec<String> = Vec::new();
-                        for i in 1..setup.cameras + 1 {
-                            let padded_number = format!("{:0>2}", i);
-                            let folder_name = format!("/{x}_{y}_CAM", x = padded_number, y = num_to_char(i).to_string());
-                            for path in &mut paths_to_append {
-                                let mut new_path = path.clone();
-                                new_path.insert_str(0, &folder_name);
-                                new_paths_vector.push(new_path);
-                            }
-                        }
-                        paths_to_append = new_paths_vector;
-                    },
-                    "%soundsources" => {
-                        let mut new_paths_vector: Vec<String> = Vec::new();
-                        for i in 1..setup.sound_sources + 1 {
-                            let padded_number = format!("{:0>2}", i);
-                            let folder_name = format!("/{x}_{y}_REC", x = padded_number, y = num_to_char(i).to_string());
-                            for path in &mut paths_to_append {
-                                let mut new_path = path.clone();
-                                new_path.insert_str(0, &folder_name);
-                                new_paths_vector.push(new_path);
-                            }
-                        }
-                        paths_to_append = new_paths_vector;
-                    },
-                    _ => {
-                        for path in &mut paths_to_append {
-                            let current_folder_name = &current_parent_folder.name;
-                            path.insert_str(0, &format!("/{}", current_folder_name));
-                        }
-                    },
-                };
-                current_parent_folder = &config.file_structure.folders_list.get(current_parent_folder.parent - 1).expect("Parent does not exist!");
-                iterations += 1;
-            }
-            if max_iterations == iterations {
-                panic!("Looped past max iterations!");
-            }
-            for path in &mut paths_to_append {
-                path.insert_str(0, &setup.name);
-            }
-            paths.append(&mut paths_to_append);
-        }
-    }
-
-    for path in &paths {
-        if !Path::new(&path).exists() {
-            match fs::create_dir(&path).map_err(|e| ConfigError::IoError(e)) {
-                Ok(()) => {},
-                Err(error) => {
-                    eprintln!("Line {}: Problem creating file: {}", line!(), error);
-                    std::process::exit(3);
-                },
-            }
-            ;
-        }
-    }
-
-    let write_config_result = Config::write_config(&config, "config.toml");
-    match write_config_result {
-        Ok(file) => file,
-        Err(error) => {
-            eprintln!("Line {}: Problem opening the file: {}", line!(), error);
-            std::process::exit(1);
-        },
+    match &setup.deadname {
+        Some(deadname) => initialize_main_folder_deadname(deadname, setup)?,
+        None => initialize_main_folder(old_setup, setup, &op_type, old_config_exists)?,
     };
 
-    // clean project will remove any empty folders in the project that are not defined.
+    old_config.setup.name = setup.name.clone();
+    Config::write_config(&old_config, "config.toml")?;
+
+    let paths = generate_folder_paths(&config)?;
+
+    for path in &paths {
+        if !Path::new(path).exists() {
+            fs::create_dir_all(path).map_err(ConfigError::IoError)?;
+        }
+    }
+
     if config.setup.clean_project {
-        let mut cleaned_this_pass = true;
-        const MAX_ITERATIONS: i32 = 100;
-        let mut iterations = 0;
-        while cleaned_this_pass && iterations < MAX_ITERATIONS {
-            cleaned_this_pass = false;
-            iterations += 1;
-            for file in WalkDir::new(format!("./{}",setup.name)).into_iter().filter_map(|file| file.ok()) {
-                if file.metadata().unwrap().is_dir() {
-                    if WalkDir::new(file.path()).into_iter().nth(1).is_none() {
-                        let empty_directory = file.path().to_string_lossy().replace("\\", "/");
-                        // if empty_directory.len() > 0 {
-                        //     empty_directory.remove(0);  // remove first
-                        // }
-                        let mut should_exist = false;
-                        for path in &paths {
-                            let mut comparable_path = path.clone();
-                            comparable_path.insert_str(0,"./");
-                            comparable_path.pop();
-                            // dbg!(&comparable_path);
-                            // dbg!(&empty_directory);
-                            if comparable_path == empty_directory {
-                                should_exist = true;
-                                break;
-                            }
+        clean_empty_directories(&config.setup.name, &paths)?;
+    }
+
+    Config::write_config(&config, "config.toml")?;
+
+    let setup_to_print = toml::to_string(&config.setup)
+        .map_err(|e| ConfigError::ParseError(format!("Failed to serialize config: {}", e)))?;
+
+    println!("\n[Current Project Setup]\n{}", setup_to_print);
+    Ok(())
+}
+
+fn generate_folder_paths(config: &Config) -> Result<Vec<String>, ConfigError> {
+    let mut paths: Vec<String> = Vec::new();
+    paths.push(config.setup.name.clone());
+
+    for folder in &config.file_structure.folders_list {
+        let folder_paths = build_folder_path(folder, config, &config.setup.name)?;
+        paths.extend(folder_paths);
+    }
+
+    Ok(paths)
+}
+
+fn build_folder_path(
+    folder: &util::config::Folder,
+    config: &Config,
+    project_name: &str,
+) -> Result<Vec<String>, ConfigError> {
+    let mut paths = Vec::new();
+
+    match folder.name.as_str() {
+        "%days" => {
+            for i in 1..=config.setup.days {
+                let folder_name = format!("{:02}_DAY{:02}", i, i);
+                let full_path = if let Some(parent_id) = &folder.parent_id {
+                    let parent_path = find_parent_path(parent_id, config, project_name)?;
+                    format!("{}/{}", parent_path, folder_name)
+                } else {
+                    format!("{}/{}", project_name, folder_name)
+                };
+                paths.push(full_path);
+            }
+        }
+        "%cams" => {
+            for i in 1..=config.setup.cameras {
+                let folder_name = format!("{:02}_{}_CAM", i, num_to_char(i));
+                let full_path = if let Some(parent_id) = &folder.parent_id {
+                    let parent_path = find_parent_path(parent_id, config, project_name)?;
+                    format!("{}/{}", parent_path, folder_name)
+                } else {
+                    format!("{}/{}", project_name, folder_name)
+                };
+                paths.push(full_path);
+            }
+        }
+        "%soundsources" => {
+            for i in 1..=config.setup.sound_sources {
+                let folder_name = format!("{:02}_{}_REC", i, num_to_char(i));
+                let full_path = if let Some(parent_id) = &folder.parent_id {
+                    let parent_path = find_parent_path(parent_id, config, project_name)?;
+                    format!("{}/{}", parent_path, folder_name)
+                } else {
+                    format!("{}/{}", project_name, folder_name)
+                };
+                paths.push(full_path);
+            }
+        }
+        _ => {
+            let full_path = if let Some(parent_id) = &folder.parent_id {
+                let parent_path = find_parent_path(parent_id, config, project_name)?;
+                format!("{}/{}", parent_path, folder.name)
+            } else {
+                format!("{}/{}", project_name, folder.name)
+            };
+            paths.push(full_path);
+        }
+    }
+
+    Ok(paths)
+}
+
+fn find_parent_path(
+    parent_id: &str,
+    config: &Config,
+    project_name: &str,
+) -> Result<String, ConfigError> {
+    for folder in &config.file_structure.folders_list {
+        if folder.id == parent_id {
+            return Ok(if let Some(grandparent_id) = &folder.parent_id {
+                let grandparent_path = find_parent_path(grandparent_id, config, project_name)?;
+                format!("{}/{}", grandparent_path, folder.name)
+            } else {
+                format!("{}/{}", project_name, folder.name)
+            });
+        }
+    }
+    Err(ConfigError::ParseError(format!(
+        "Parent folder with ID '{}' not found",
+        parent_id
+    )))
+}
+
+fn clean_empty_directories(project_name: &str, valid_paths: &[String]) -> Result<(), ConfigError> {
+    let mut cleaned_this_pass = true;
+    const MAX_ITERATIONS: i32 = 100;
+    let mut iterations = 0;
+
+    while cleaned_this_pass && iterations < MAX_ITERATIONS {
+        cleaned_this_pass = false;
+        iterations += 1;
+
+        for entry in WalkDir::new(format!("./{}", project_name))
+            .into_iter()
+            .filter_map(|e| e.ok())
+        {
+            if entry.metadata().unwrap().is_dir() {
+                if WalkDir::new(entry.path()).into_iter().nth(1).is_none() {
+                    let empty_directory = entry.path().to_string_lossy().replace("\\", "/");
+                    let mut should_exist = false;
+
+                    for path in valid_paths {
+                        let comparable_path = format!("./{}", path);
+                        if comparable_path == empty_directory {
+                            should_exist = true;
+                            break;
                         }
-                        if !should_exist {
-                            match fs::remove_dir(&empty_directory) {
-                                Ok(()) => {
-                                    println!("Managed to delete empty directory {}", &empty_directory);
-                                    cleaned_this_pass = true;
-                                },
-                                Err(error) => {
-                                    eprintln!("Line {}: Program failed to delete a folder it thought was empty!: {}", line!(), error);
-                                    std::process::exit(1);
-                                }
-                            }
-    
-                        }
+                    }
+
+                    if !should_exist {
+                        fs::remove_dir(&empty_directory).map_err(ConfigError::IoError)?;
+                        println!("Removed empty directory: {}", empty_directory);
+                        cleaned_this_pass = true;
                     }
                 }
             }
         }
     }
 
-    let setup_to_print_result= toml::to_string(&config.setup)
-    .map_err(|e| ConfigError::ParseError(format!("Failed to serialize config: {}", e)));
+    if iterations >= MAX_ITERATIONS {
+        return Err(ConfigError::ParseError(
+            "Exceeded maximum cleanup iterations".to_string(),
+        ));
+    }
 
-    let setup_to_print = match setup_to_print_result {
-        Ok(setup) => setup,
-        Err(error) => {
-            eprintln!("Line {}: Problem opening the file: {}", line!(), error);
-            std::process::exit(1);
-        },
-    };
-
-    println!("\n[Current Project Setup]\n{}", setup_to_print);
+    Ok(())
 }
 
-// initializes the main folder, optionally renaming an older folder given the correct conditions.
-fn initialize_main_folder(old_setup : &ProjectSetup, setup : &ProjectSetup, op_type: &OperationType, old_config_exists : bool) -> std::result::Result<(), ConfigError>{
-    if old_config_exists && op_type == &OperationType::Update && Path::new(&old_setup.name).exists() && &old_setup.name != &setup.name {
-        fs::rename(&old_setup.name, &setup.name).map_err(|e| ConfigError::IoError(e))?;
-    } else {
-        if !Path::new(&setup.name).exists(){
-            fs::create_dir(&setup.name).map_err(|e| ConfigError::IoError(e))?;
-        }
+fn initialize_main_folder(
+    old_setup: &ProjectSetup,
+    setup: &ProjectSetup,
+    op_type: &OperationType,
+    old_config_exists: bool,
+) -> Result<(), ConfigError> {
+    if old_config_exists
+        && op_type == &OperationType::Update
+        && Path::new(&old_setup.name).exists()
+        && old_setup.name != setup.name
+    {
+        fs::rename(&old_setup.name, &setup.name).map_err(ConfigError::IoError)?;
+    } else if !Path::new(&setup.name).exists() {
+        fs::create_dir(&setup.name).map_err(ConfigError::IoError)?;
     }
     Ok(())
 }
 
-// initializes the main folder, renaming an older folder using its name.
-fn initialize_main_folder_deadname(deadname: &String, setup: &ProjectSetup) -> std::result::Result<(), ConfigError>{
-    if Path::new(&deadname).exists() {
-        fs::rename(&deadname, &setup.name).map_err(|e| ConfigError::IoError(e))?;
-    } else {
-        if !Path::new(&setup.name).exists(){
-            fs::create_dir(&setup.name).map_err(|e| ConfigError::IoError(e))?;
-        }
+fn initialize_main_folder_deadname(
+    deadname: &str,
+    setup: &ProjectSetup,
+) -> Result<(), ConfigError> {
+    if Path::new(deadname).exists() {
+        fs::rename(deadname, &setup.name).map_err(ConfigError::IoError)?;
+    } else if !Path::new(&setup.name).exists() {
+        fs::create_dir(&setup.name).map_err(ConfigError::IoError)?;
     }
     Ok(())
 }
@@ -290,76 +289,90 @@ fn num_to_char(num: usize) -> char {
     if num >= 1 && num <= 26 {
         (num as u8 + b'A' - 1) as char
     } else {
-        let char: char = '_';
-        char
+        '_'
     }
 }
 
 fn help() {
-    println!("
-nano project manager v(0.1.0) || https://nanomotions.org/scripts/nanopm || https://github.com/kaweepatinn1/nanopm
+    println!(
+        "
+nano project manager v(0.2.0) || https://nanomotions.org/scripts/nanopm || https://github.com/kaweepatinn1/nanopm
 -----------------------------------------------------------------------------------------------------------------
 Usage:
     nanopm [OPERATION] [ARGUMENTS]
 -----------------------------------------------------------------------------------------------------------------
-Operations: 
-    new, n      | Initialize a new project in the current directory, creating a new config file from 
+Operations:
+    new, n      | Initialize a new project in the current directory, creating a new config file from
                   provided arguments, using defaults where missing.
-    update, u   | Update the current config file based on provided arguments. Project Manager must already 
+    update, u   | Update the current config file based on provided arguments. Project Manager must already
                   have been initialized.
-    query, q    | Query the current project based on provided arguments. Project Manager must already have 
-                  been initialized.
+    query, q    | Query the current project based on provided arguments. Project Manager must already have
+                  been initialized. Defaults to general query if no specific query type is provided.
 -----------------------------------------------------------------------------------------------------------------
-Arguments: 
+Arguments:
 -----------------------------------------------------------------------------------------------------------------
     CONFIG ARGS | Works with either new/update operations:
-    
-        -n, --name <String>             | Names the project and its directory. When used with update, uses 
+
+        -n, --name <String>             | Names the project and its directory. When used with update, uses
                                           the old config file to rename the old directory to the new name.
-        -dn, --deadname <String>        | Looks for a directory with this name, updating it with the new 
+        -dn, --deadname <String>        | Looks for a directory with this name, updating it with the new
                                           name provided if it exists, using it as the new project directory.
         -d, --days <Integer>            | Sets the amount of footage days the project should account for.
         -c, --cameras <Integer>         | Sets the amount of cameras the project should account for.
         -s, --sound-sources <Integer>   | Sets the amount of sound sources the project should account for.
-        -cl, --clean                    | Cleans the project folder after initializing, deleting all empty 
+        -cl, --clean                    | Cleans the project folder after initializing, deleting all empty
                                           folders not defined by the program.
 -----------------------------------------------------------------------------------------------------------------
     QUERY ARGS | You can use ONE type of query at a time. Works with query operations only:
-       
-        GENERAL QUERY:
 
-            -g, --general               | Creates a general query of various important project folders. 
+        GENERAL QUERY (default):
+
+            -g, --general               | Creates a general query of various important project folders.
                                           Edit the list in config. Can return sorted by size.
-                -ss, --sort-size        | Sorts general query by size. Must be used after a general query.
-                -sd, --sort-default     | Sorts general query by... its default order... Kind of redundant. 
-                                          Must be used after a general query.
-    
+
         PARTIAL QUERY:
-    
-            -r, --root                  | Queries the full project directory, as well as returning project 
+
+            -r, --root                  | Queries the full project directory, as well as returning project
                                           config values.
             -d, --days                  | Queries each day in RUSHES.
-            -c, --cameras               | Queries each camera. Combines all days into one entry for each 
+            -c, --cameras               | Queries each camera. Combines all days into one entry for each
                                           camera, displays each day separately if --unique is used.
-            -s, --sound-sources         | Queries each sound source. Combines all days into one entry for 
+            -s, --sound-sources         | Queries each sound source. Combines all days into one entry for
                                           each source, displays each day separately if --unique is used.
-            -u, --unique                | Stops nanopm from combining all days into one entry for --cameras 
+            -u, --unique                | Stops nanopm from combining all days into one entry for --cameras
                                           and --sound-sources. Unique folders are queried individually.
-    
-        FOLDER QUERY: 
-    
-            -f, --folder <String>       | Queries all folders with the name of the string. Can chain 
+
+        FOLDER QUERY:
+
+            -f, --folder <String>       | Queries all folders with the name of the string. Can chain
                                           multiple --folder calls to query multiple folder names at once.
-    
+
         UNIVERSAL QUERY ARGS:
-        -w, --write <String>            | Writes query result to file with the specified string path. 
+        -ss, --sort-size                | Sorts query results by size (largest first).
+        -sd, --sort-default             | Sorts query results in default order.
+        -w, --write <String>            | Writes query result to file with the specified string path.
                                           Uses timestamp for path instead if last parameter.
-        -t, --timestamp                 | Adds a timestamp to the top of the query file, if written. 
-                                          Does nothing if write is not specified. Sick!
-        -q, --quiet                     | Does not log missing folder errors into the console.");                                  
+        -t, --timestamp                 | Adds a timestamp to the top of the query file, if written.
+                                          Does nothing if write is not specified.
+        -q, --quiet                     | Does not log missing folder errors into the console.
+        -rt, --runtime                  | Includes runtime information in query results."
+    );
     finish();
 }
 
 fn finish() {
     process::exit(0);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_num_to_char() {
+        assert_eq!(num_to_char(1), 'A');
+        assert_eq!(num_to_char(26), 'Z');
+        assert_eq!(num_to_char(0), '_');
+        assert_eq!(num_to_char(27), '_');
+    }
 }
